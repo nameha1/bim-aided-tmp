@@ -14,6 +14,7 @@ const AddEmployeeForm = ({ onSuccess }: AddEmployeeFormProps) => {
   const [loading, setLoading] = useState(false);
   const [departments, setDepartments] = useState<any[]>([]);
   const [designations, setDesignations] = useState<any[]>([]);
+  const [employees, setEmployees] = useState<any[]>([]);
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -28,12 +29,14 @@ const AddEmployeeForm = ({ onSuccess }: AddEmployeeFormProps) => {
     joiningDate: "",
     departmentId: "",
     designationId: "",
+    supervisorId: "",
     password: "",
   });
 
   useEffect(() => {
     fetchDepartments();
     fetchDesignations();
+    fetchEmployees();
   }, []);
 
   const fetchDepartments = async () => {
@@ -44,6 +47,14 @@ const AddEmployeeForm = ({ onSuccess }: AddEmployeeFormProps) => {
   const fetchDesignations = async () => {
     const { data } = await supabase.from("designations").select("*");
     setDesignations(data || []);
+  };
+
+  const fetchEmployees = async () => {
+    const { data } = await supabase
+      .from("employees")
+      .select("id, first_name, last_name, designations(name)")
+      .eq("employment_status", "Active");
+    setEmployees(data || []);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -78,6 +89,7 @@ const AddEmployeeForm = ({ onSuccess }: AddEmployeeFormProps) => {
         joining_date: formData.joiningDate || new Date().toISOString().split("T")[0],
         department_id: formData.departmentId || null,
         designation_id: formData.designationId || null,
+        supervisor_id: formData.supervisorId || null,
       } as any);
 
       if (employeeError) throw employeeError;
@@ -127,6 +139,7 @@ const AddEmployeeForm = ({ onSuccess }: AddEmployeeFormProps) => {
         joiningDate: "",
         departmentId: "",
         designationId: "",
+        supervisorId: "",
         password: "",
       });
 
@@ -266,6 +279,23 @@ const AddEmployeeForm = ({ onSuccess }: AddEmployeeFormProps) => {
               {designations.map((desig) => (
                 <SelectItem key={desig.id} value={desig.id}>
                   {desig.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="supervisor">Reporting Manager</Label>
+          <Select value={formData.supervisorId} onValueChange={(value) => setFormData({ ...formData, supervisorId: value })}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select reporting manager" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">None</SelectItem>
+              {employees.map((emp) => (
+                <SelectItem key={emp.id} value={emp.id}>
+                  {emp.first_name} {emp.last_name} - {emp.designations?.name}
                 </SelectItem>
               ))}
             </SelectContent>

@@ -72,9 +72,13 @@ const AttendanceHistory = ({ employeeId }: AttendanceHistoryProps) => {
               <TableCell>{record.check_out_time || "N/A"}</TableCell>
               <TableCell>
                 {record.status === "Leave" && (
-                  <Badge variant={record.leave_approved ? "default" : "secondary"}>
-                    {record.leave_approved ? "Approved" : "Pending"}
-                  </Badge>
+                  record.supervisor_approved && record.admin_approved ? (
+                    <Badge variant="default">Fully Approved</Badge>
+                  ) : record.supervisor_approved ? (
+                    <Badge variant="secondary">Pending Admin</Badge>
+                  ) : (
+                    <Badge variant="secondary">Pending Supervisor</Badge>
+                  )
                 )}
               </TableCell>
             </TableRow>

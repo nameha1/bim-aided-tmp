@@ -16,6 +16,9 @@ export type Database = {
     Tables: {
       attendance: {
         Row: {
+          admin_approved: boolean | null
+          admin_approved_at: string | null
+          admin_approved_by: string | null
           approved_by: string | null
           check_in_time: string | null
           check_out_time: string | null
@@ -23,14 +26,19 @@ export type Database = {
           date: string
           employee_id: string
           id: string
-          leave_approved: boolean | null
           leave_reason: string | null
           leave_type: Database["public"]["Enums"]["leave_type"] | null
           status: Database["public"]["Enums"]["attendance_status"]
+          supervisor_approved: boolean | null
+          supervisor_approved_at: string | null
+          supervisor_approved_by: string | null
           total_hours: number | null
           updated_at: string | null
         }
         Insert: {
+          admin_approved?: boolean | null
+          admin_approved_at?: string | null
+          admin_approved_by?: string | null
           approved_by?: string | null
           check_in_time?: string | null
           check_out_time?: string | null
@@ -38,14 +46,19 @@ export type Database = {
           date: string
           employee_id: string
           id?: string
-          leave_approved?: boolean | null
           leave_reason?: string | null
           leave_type?: Database["public"]["Enums"]["leave_type"] | null
           status: Database["public"]["Enums"]["attendance_status"]
+          supervisor_approved?: boolean | null
+          supervisor_approved_at?: string | null
+          supervisor_approved_by?: string | null
           total_hours?: number | null
           updated_at?: string | null
         }
         Update: {
+          admin_approved?: boolean | null
+          admin_approved_at?: string | null
+          admin_approved_by?: string | null
           approved_by?: string | null
           check_in_time?: string | null
           check_out_time?: string | null
@@ -53,14 +66,23 @@ export type Database = {
           date?: string
           employee_id?: string
           id?: string
-          leave_approved?: boolean | null
           leave_reason?: string | null
           leave_type?: Database["public"]["Enums"]["leave_type"] | null
           status?: Database["public"]["Enums"]["attendance_status"]
+          supervisor_approved?: boolean | null
+          supervisor_approved_at?: string | null
+          supervisor_approved_by?: string | null
           total_hours?: number | null
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "attendance_admin_approved_by_fkey"
+            columns: ["admin_approved_by"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "attendance_approved_by_fkey"
             columns: ["approved_by"]
@@ -73,6 +95,69 @@ export type Database = {
             columns: ["employee_id"]
             isOneToOne: false
             referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_supervisor_approved_by_fkey"
+            columns: ["supervisor_approved_by"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      career_postings: {
+        Row: {
+          closing_date: string | null
+          created_at: string | null
+          department_id: string | null
+          description: string
+          employment_type: string
+          id: string
+          location: string
+          posted_date: string | null
+          published: boolean | null
+          requirements: string | null
+          responsibilities: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          closing_date?: string | null
+          created_at?: string | null
+          department_id?: string | null
+          description: string
+          employment_type: string
+          id?: string
+          location: string
+          posted_date?: string | null
+          published?: boolean | null
+          requirements?: string | null
+          responsibilities?: string | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          closing_date?: string | null
+          created_at?: string | null
+          department_id?: string | null
+          description?: string
+          employment_type?: string
+          id?: string
+          location?: string
+          posted_date?: string | null
+          published?: boolean | null
+          requirements?: string | null
+          responsibilities?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "career_postings_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
             referencedColumns: ["id"]
           },
         ]
@@ -414,6 +499,48 @@ export type Database = {
           },
         ]
       }
+      projects: {
+        Row: {
+          category: Database["public"]["Enums"]["project_category"]
+          client_name: string | null
+          completion_date: string | null
+          created_at: string | null
+          description: string
+          id: string
+          image_url: string | null
+          project_value: number | null
+          published: boolean | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          category: Database["public"]["Enums"]["project_category"]
+          client_name?: string | null
+          completion_date?: string | null
+          created_at?: string | null
+          description: string
+          id?: string
+          image_url?: string | null
+          project_value?: number | null
+          published?: boolean | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["project_category"]
+          client_name?: string | null
+          completion_date?: string | null
+          created_at?: string | null
+          description?: string
+          id?: string
+          image_url?: string | null
+          project_value?: number | null
+          published?: boolean | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       salaries: {
         Row: {
           allowances: number | null
@@ -514,6 +641,13 @@ export type Database = {
         | "Unpaid Leave"
         | "Maternity Leave"
         | "Other Leave"
+      project_category:
+        | "Commercial"
+        | "Education & Healthcare"
+        | "Cultural & Sports"
+        | "Residential"
+        | "Infrastructure & Municipal"
+        | "Industrial & Park"
       user_role: "Admin" | "Employee"
     }
     CompositeTypes: {
@@ -657,6 +791,14 @@ export const Constants = {
         "Unpaid Leave",
         "Maternity Leave",
         "Other Leave",
+      ],
+      project_category: [
+        "Commercial",
+        "Education & Healthcare",
+        "Cultural & Sports",
+        "Residential",
+        "Infrastructure & Municipal",
+        "Industrial & Park",
       ],
       user_role: ["Admin", "Employee"],
     },

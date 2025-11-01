@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
 
 const Projects = () => {
   const categories = [
@@ -16,6 +17,7 @@ const Projects = () => {
   ];
 
   const [selectedCategory, setSelectedCategory] = useState("All");
+  const [filteredProjects, setFilteredProjects] = useState<any[]>([]);
 
   const projects = [
     {
@@ -56,9 +58,32 @@ const Projects = () => {
     },
   ];
 
-  const filteredProjects = selectedCategory === "All" 
-    ? projects 
-    : projects.filter(p => p.category === selectedCategory);
+  // Fetch projects from database
+  useEffect(() => {
+    const fetchProjects = async () => {
+      const { data, error } = await supabase
+        .from("projects")
+        .select("*")
+        .eq("published", true)
+        .order("created_at", { ascending: false });
+
+      if (data && data.length > 0) {
+        // Use database projects if available
+        const dbProjects = data.map(p => ({
+          title: p.title,
+          category: p.category,
+          description: p.description,
+          image: p.image_url || "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800",
+        }));
+        setFilteredProjects(selectedCategory === "All" ? dbProjects : dbProjects.filter(p => p.category === selectedCategory));
+      } else {
+        // Fallback to static projects
+        setFilteredProjects(selectedCategory === "All" ? projects : projects.filter(p => p.category === selectedCategory));
+      }
+    };
+
+    fetchProjects();
+  }, [selectedCategory]);
 
   return (
     <div className="min-h-screen">

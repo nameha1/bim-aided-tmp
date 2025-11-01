@@ -8,7 +8,6 @@ import Services from "./pages/Services";
 import Projects from "./pages/Projects";
 import About from "./pages/About";
 import Career from "./pages/Career";
-import Blog from "./pages/Blog";
 import Login from "./pages/Login";
 import AdminDashboard from "./pages/AdminDashboard";
 import EmployeeDashboard from "./pages/EmployeeDashboard";
@@ -29,7 +28,6 @@ const App = () => (
           <Route path="/projects" element={<Projects />} />
           <Route path="/about" element={<About />} />
           <Route path="/career" element={<Career />} />
-          <Route path="/blog" element={<Blog />} />
           <Route path="/login" element={<Login />} />
           <Route
             path="/admin"

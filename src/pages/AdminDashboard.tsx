@@ -5,10 +5,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Users, UserPlus, Calendar, FileText, LogOut } from "lucide-react";
+import { Users, UserPlus, Calendar, LogOut } from "lucide-react";
 import AddEmployeeForm from "@/components/admin/AddEmployeeForm";
 import EmployeeList from "@/components/admin/EmployeeList";
 import LeaveRequests from "@/components/admin/LeaveRequests";
+import ProjectManager from "@/components/admin/ProjectManager";
+import CareerManager from "@/components/admin/CareerManager";
 
 const AdminDashboard = () => {
   const [stats, setStats] = useState({
@@ -32,13 +34,13 @@ const AdminDashboard = () => {
       const { count: activeCount } = await supabase
         .from("employees")
         .select("*", { count: "exact", head: true })
-        .eq("employment_status", "Active");
+        .eq("employment_status", "Active" as any);
 
       const { count: pendingCount } = await supabase
         .from("attendance")
         .select("*", { count: "exact", head: true })
-        .eq("status", "Leave")
-        .eq("leave_approved", false);
+        .eq("status", "Leave" as any)
+        .eq("admin_approved", false);
 
       setStats({
         totalEmployees: employeesCount || 0,
@@ -111,6 +113,8 @@ const AdminDashboard = () => {
             <TabsTrigger value="employees">Employees</TabsTrigger>
             <TabsTrigger value="add-employee">Add Employee</TabsTrigger>
             <TabsTrigger value="leave-requests">Leave Requests</TabsTrigger>
+            <TabsTrigger value="projects">Projects</TabsTrigger>
+            <TabsTrigger value="careers">Career Postings</TabsTrigger>
           </TabsList>
 
           <TabsContent value="employees">
@@ -145,6 +149,30 @@ const AdminDashboard = () => {
               </CardHeader>
               <CardContent>
                 <LeaveRequests onUpdate={fetchStats} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="projects">
+            <Card className="border-border">
+              <CardHeader>
+                <CardTitle>Project Management</CardTitle>
+                <CardDescription>Add and manage projects for the website portfolio</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ProjectManager />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="careers">
+            <Card className="border-border">
+              <CardHeader>
+                <CardTitle>Career Postings</CardTitle>
+                <CardDescription>Manage job openings on the careers page</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <CareerManager />
               </CardContent>
             </Card>
           </TabsContent>

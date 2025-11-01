@@ -5,14 +5,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { User, Calendar, FileText, LogOut, Briefcase } from "lucide-react";
+import { User, Calendar, FileText, LogOut, Briefcase, Users } from "lucide-react";
 import EmployeeProfile from "@/components/employee/EmployeeProfile";
 import LeaveRequestForm from "@/components/employee/LeaveRequestForm";
 import AttendanceHistory from "@/components/employee/AttendanceHistory";
+import SupervisorLeaveRequests from "@/components/admin/SupervisorLeaveRequests";
 
 const EmployeeDashboard = () => {
   const [employeeData, setEmployeeData] = useState<any>(null);
   const [leaveBalance, setLeaveBalance] = useState<any>(null);
+  const [isSupervisor, setIsSupervisor] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -32,6 +34,14 @@ const EmployeeDashboard = () => {
         .single();
 
       setEmployeeData(employee);
+
+      // Check if this employee is a supervisor
+      const { count } = await supabase
+        .from("employees")
+        .select("*", { count: "exact", head: true })
+        .eq("supervisor_id", employee.id);
+
+      setIsSupervisor((count || 0) > 0);
 
       const currentYear = new Date().getFullYear();
       const { data: balance } = await supabase
@@ -135,6 +145,7 @@ const EmployeeDashboard = () => {
         <Tabs defaultValue="profile" className="space-y-4">
           <TabsList>
             <TabsTrigger value="profile">My Profile</TabsTrigger>
+            {isSupervisor && <TabsTrigger value="team-leaves">Team Leaves</TabsTrigger>}
             <TabsTrigger value="leave-request">Request Leave</TabsTrigger>
             <TabsTrigger value="attendance">Attendance History</TabsTrigger>
           </TabsList>
@@ -147,6 +158,21 @@ const EmployeeDashboard = () => {
               </CardHeader>
               <CardContent>
                 <EmployeeProfile employee={employeeData} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="team-leaves">
+            <Card className="border-border">
+              <CardHeader>
+                <CardTitle>Team Leave Requests</CardTitle>
+                <CardDescription>Approve leave requests from your team members</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <SupervisorLeaveRequests 
+                  supervisorId={employeeData.id}
+                  onUpdate={fetchEmployeeData}
+                />
               </CardContent>
             </Card>
           </TabsContent>

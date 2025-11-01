@@ -1,40 +1,47 @@
+import { useEffect, useState } from "react";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { MapPin, Briefcase, Clock } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 const Career = () => {
-  const openings = [
-    {
-      title: "Senior BIM Manager",
-      department: "BIM Services",
-      location: "Remote",
-      type: "Full-time",
-      description: "Lead BIM coordination and implementation for large-scale projects.",
-    },
-    {
-      title: "Revit Modeler",
-      department: "Modeling",
-      location: "Hybrid",
-      type: "Full-time",
-      description: "Create detailed architectural and structural BIM models.",
-    },
-    {
-      title: "MEP BIM Coordinator",
-      department: "MEP Services",
-      location: "On-site",
-      type: "Full-time",
-      description: "Coordinate mechanical, electrical, and plumbing systems modeling.",
-    },
-    {
-      title: "VDC Engineer",
-      department: "VDC Services",
-      location: "Remote",
-      type: "Full-time",
-      description: "Support virtual design and construction coordination efforts.",
-    },
-  ];
+  const [openings, setOpenings] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchCareerPostings = async () => {
+      const { data } = await supabase
+        .from("career_postings")
+        .select("*, departments(name)")
+        .eq("published", true)
+        .order("posted_date", { ascending: false });
+
+      if (data && data.length > 0) {
+        setOpenings(data);
+      } else {
+        // Fallback to static data if no postings
+        setOpenings([
+          {
+            title: "Senior BIM Manager",
+            departments: { name: "BIM Services" },
+            location: "Remote",
+            employment_type: "Full-time",
+            description: "Lead BIM coordination and implementation for large-scale projects.",
+          },
+          {
+            title: "Revit Modeler",
+            departments: { name: "Modeling" },
+            location: "Hybrid",
+            employment_type: "Full-time",
+            description: "Create detailed architectural and structural BIM models.",
+          },
+        ]);
+      }
+    };
+
+    fetchCareerPostings();
+  }, []);
 
   const benefits = [
     "Competitive salary and benefits",
@@ -104,7 +111,7 @@ const Career = () => {
                     <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
                       <div className="flex items-center gap-2">
                         <Briefcase size={16} className="text-primary" />
-                        <span>{job.department}</span>
+                        <span>{job.departments?.name || "N/A"}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <MapPin size={16} className="text-primary" />
@@ -112,7 +119,7 @@ const Career = () => {
                       </div>
                       <div className="flex items-center gap-2">
                         <Clock size={16} className="text-primary" />
-                        <span>{job.type}</span>
+                        <span>{job.employment_type}</span>
                       </div>
                     </div>
                   </CardContent>
