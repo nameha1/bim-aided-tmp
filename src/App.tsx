@@ -6,8 +6,10 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Landing from "./pages/Landing";
 import Services from "./pages/Services";
 import Projects from "./pages/Projects";
+import ProjectDetail from "./pages/ProjectDetail";
 import About from "./pages/About";
 import Career from "./pages/Career";
+import Contact from "./pages/Contact";
 import Login from "./pages/Login";
 import AdminDashboard from "./pages/AdminDashboard";
 import EmployeeDashboard from "./pages/EmployeeDashboard";
@@ -18,6 +20,7 @@ import AdvancedBIM from "./pages/services/AdvancedBIM";
 import VDCServices from "./pages/services/VDCServices";
 import GlobalBIM from "./pages/services/GlobalBIM";
 import WhatsAppWidget from "./components/WhatsAppWidget";
+import ScrollToTop from "./components/ScrollToTop";
 import { useSessionManager } from "./hooks/use-session-manager";
 
 const queryClient = new QueryClient({
@@ -35,6 +38,7 @@ const AppContent = () => {
   
   return (
     <>
+      <ScrollToTop />
       <Toaster />
       <Sonner />
       <WhatsAppWidget />
@@ -46,13 +50,15 @@ const AppContent = () => {
         <Route path="/services/vdc-services" element={<VDCServices />} />
         <Route path="/services/global-bim" element={<GlobalBIM />} />
         <Route path="/projects" element={<Projects />} />
+        <Route path="/projects/:id" element={<ProjectDetail />} />
         <Route path="/about" element={<About />} />
         <Route path="/career" element={<Career />} />
+        <Route path="/contact" element={<Contact />} />
         <Route path="/login" element={<Login />} />
         <Route
           path="/admin"
           element={
-            <ProtectedRoute requiredRole="Admin">
+            <ProtectedRoute requiredRole="admin">
               <AdminDashboard />
             </ProtectedRoute>
           }
@@ -60,7 +66,7 @@ const AppContent = () => {
         <Route
           path="/employee"
           element={
-            <ProtectedRoute requiredRole="Employee">
+            <ProtectedRoute requiredRole="employee">
               <EmployeeDashboard />
             </ProtectedRoute>
           }

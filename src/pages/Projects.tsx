@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import ProjectDetailsDialog from "@/components/ProjectDetailsDialog";
 
 const Projects = () => {
   const categories = [
@@ -19,8 +19,7 @@ const Projects = () => {
 
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [filteredProjects, setFilteredProjects] = useState<any[]>([]);
-  const [selectedProject, setSelectedProject] = useState<any>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const navigate = useNavigate();
 
   const projects = [
     {
@@ -146,9 +145,8 @@ const Projects = () => {
     fetchProjects();
   }, [selectedCategory]);
 
-  const handleProjectClick = (project: any) => {
-    setSelectedProject(project);
-    setDialogOpen(true);
+  const handleProjectClick = (projectId: string) => {
+    navigate(`/projects/${projectId}`);
   };
 
   return (
@@ -192,7 +190,7 @@ const Projects = () => {
               <Card 
                 key={index} 
                 className="border-border overflow-hidden hover:shadow-xl transition-all group cursor-pointer"
-                onClick={() => handleProjectClick(project)}
+                onClick={() => handleProjectClick(project.id)}
               >
                 <div className="relative h-48 overflow-hidden">
                   <img 
@@ -220,13 +218,6 @@ const Projects = () => {
           </div>
         </div>
       </section>
-
-      {/* Project Details Dialog */}
-      <ProjectDetailsDialog
-        project={selectedProject}
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-      />
 
       <Footer />
     </div>

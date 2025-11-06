@@ -30,10 +30,23 @@ const LeaveRequests = ({ onUpdate }: LeaveRequestsProps) => {
         .eq("status", "Leave" as any)
         .order("date", { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching leave requests:", error);
+        toast({
+          title: "Error loading leave requests",
+          description: error.message,
+          variant: "destructive",
+        });
+        throw error;
+      }
       setRequests(data || []);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching leave requests:", error);
+      toast({
+        title: "Error loading leave requests",
+        description: error?.message || "An unknown error occurred",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }

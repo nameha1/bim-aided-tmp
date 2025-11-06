@@ -13,6 +13,7 @@ import ProjectManager from "@/components/admin/ProjectManager";
 import CareerManager from "@/components/admin/CareerManager";
 import ApplicationManager from "@/components/admin/ApplicationManager";
 import AssignmentManager from "@/components/admin/AssignmentManager";
+import ManualAttendanceEntry from "@/components/admin/ManualAttendanceEntry";
 
 const AdminDashboard = () => {
   const [stats, setStats] = useState({
@@ -137,6 +138,7 @@ const AdminDashboard = () => {
           <TabsList>
             <TabsTrigger value="employees">Employees</TabsTrigger>
             <TabsTrigger value="add-employee">Add Employee</TabsTrigger>
+            <TabsTrigger value="attendance">Attendance</TabsTrigger>
             <TabsTrigger value="leave-requests">Leave Requests</TabsTrigger>
             <TabsTrigger value="assignments">Assignments</TabsTrigger>
             <TabsTrigger value="projects">Projects</TabsTrigger>
@@ -164,6 +166,32 @@ const AdminDashboard = () => {
               </CardHeader>
               <CardContent>
                 <AddEmployeeForm onSuccess={handleEmployeeUpdate} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="attendance">
+            <Card className="border-border">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Attendance Management</CardTitle>
+                  <CardDescription>Manually add or update employee attendance records</CardDescription>
+                </div>
+                <ManualAttendanceEntry onSuccess={() => {}} />
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Use the "Add Manual Attendance" button to record attendance for employees who are working remotely or forgot to check in.
+                </p>
+                <div className="p-4 bg-muted/50 rounded-lg">
+                  <h4 className="font-semibold text-sm mb-2">Guidelines:</h4>
+                  <ul className="text-xs text-muted-foreground space-y-1">
+                    <li>• You can add attendance for any date (past or present)</li>
+                    <li>• Check-in and check-out times are optional</li>
+                    <li>• All manually added records are flagged for audit purposes</li>
+                    <li>• Employees can only check in from the office IP address</li>
+                  </ul>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

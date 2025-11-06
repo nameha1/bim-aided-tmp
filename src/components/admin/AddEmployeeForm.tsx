@@ -93,69 +93,52 @@ const AddEmployeeForm = ({ onSuccess }: AddEmployeeFormProps) => {
     setLoading(true);
 
     try {
-      // Create auth user
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/login`,
-        },
+      // Use the custom function to create employee account (bypasses email confirmation)
+      const { data, error } = await supabase.rpc('create_employee_account' as any, {
+        p_email: formData.email,
+        p_password: formData.password,
+        p_first_name: formData.firstName,
+        p_last_name: formData.lastName,
+        p_gender: formData.gender || null,
+        p_date_of_birth: formData.dateOfBirth || null,
+        p_national_id: formData.nationalId || null,
+        p_phone_number: formData.phone || null,
+        p_address: formData.address || null,
+        p_joining_date: formData.joiningDate || new Date().toISOString().split('T')[0],
+        p_department_id: formData.departmentId || null,
+        p_designation_id: formData.designationId || null,
+        p_supervisor_id: formData.supervisorId || null,
       });
 
-      if (authError) throw authError;
+      console.log("RPC Response - data:", JSON.stringify(data, null, 2));
+      console.log("RPC Response - error:", JSON.stringify(error, null, 2));
 
-      if (!authData.user) throw new Error("Failed to create user");
-
-      // Create employee record
-      const { error: employeeError } = await supabase.from("employees").insert({
-        user_id: authData.user.id,
-        first_name: formData.firstName,
-        last_name: formData.lastName,
-        email: formData.email,
-        gender: formData.gender as any,
-        date_of_birth: formData.dateOfBirth || null,
-        national_id: formData.nationalId || null,
-        phone_number: formData.phone || null,
-        address: formData.address || null,
-        joining_date: formData.joiningDate || new Date().toISOString().split("T")[0],
-        department_id: formData.departmentId || null,
-        designation_id: formData.designationId || null,
-        supervisor_id: formData.supervisorId || null,
-      } as any);
-
-      if (employeeError) throw employeeError;
-
-      // Assign Employee role
-      const { error: roleError } = await supabase.from("user_roles").insert({
-        user_id: authData.user.id,
-        role: "Employee",
-      });
-
-      if (roleError) throw roleError;
-
-      // Create leave balance for current year
-      const { data: employeeData } = await supabase
-        .from("employees")
-        .select("id")
-        .eq("user_id", authData.user.id)
-        .single();
-
-      if (employeeData) {
-        await supabase.from("leave_balances").insert({
-          employee_id: employeeData.id,
-          year: new Date().getFullYear(),
-          annual_leave_total: 20,
-          annual_leave_used: 0,
-          sick_leave_total: 10,
-          sick_leave_used: 0,
-          casual_leave_total: 10,
-          casual_leave_used: 0,
+      if (error) {
+        console.error("Error creating employee:", error);
+        toast({
+          title: "Error creating employee",
+          description: error.message || "Failed to create employee account",
+          variant: "destructive",
         });
+        throw new Error(error.message || "Failed to create employee account");
+      }
+
+      // Check if the function returned an error
+      const result = data as any;
+      console.log("Function result:", JSON.stringify(result, null, 2));
+      
+      if (result && !result.success) {
+        toast({
+          title: "Error creating employee",
+          description: result.message || result.error || "Failed to create employee account",
+          variant: "destructive",
+        });
+        throw new Error(result.message || result.error || "Failed to create employee account");
       }
 
       toast({
         title: "Employee added successfully",
-        description: "The employee account has been created and credentials sent.",
+        description: "The employee account has been created successfully.",
       });
 
       setFormData({

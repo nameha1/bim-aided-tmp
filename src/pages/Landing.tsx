@@ -1,12 +1,16 @@
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import ParallaxHero from "@/components/ParallaxHero";
+import { supabase } from "@/integrations/supabase/client";
 import { Building2, Layers, Box, Globe, ArrowRight, CheckCircle2 } from "lucide-react";
 
 const Landing = () => {
+  const [featuredProjects, setFeaturedProjects] = useState<any[]>([]);
+  
   const services = [
     {
       icon: Building2,
@@ -36,6 +40,60 @@ const Landing = () => {
     { value: "15+", label: "Years Experience" },
     { value: "98%", label: "Client Satisfaction" },
   ];
+
+  // Static fallback projects
+  const staticProjects = [
+    {
+      id: "1",
+      title: "Downtown Business Center",
+      category: "Commercial",
+      description: "Complete BIM modeling and coordination for a 30-story mixed-use development.",
+      image: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800",
+    },
+    {
+      id: "3",
+      title: "National Sports Arena",
+      category: "Cultural & Sports",
+      description: "Advanced structural and MEP modeling for large-scale sports facility.",
+      image: "https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?w=800",
+    },
+    {
+      id: "5",
+      title: "Metro Transit Station",
+      category: "Infrastructure & Municipal",
+      description: "Infrastructure BIM coordination for urban transit development.",
+      image: "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=800",
+    },
+  ];
+
+  // Fetch featured projects from database
+  useEffect(() => {
+    const fetchFeaturedProjects = async () => {
+      const { data, error } = await supabase
+        .from("projects")
+        .select("*")
+        .eq("published", true)
+        .order("created_at", { ascending: false })
+        .limit(3);
+
+      if (data && data.length > 0) {
+        // Use database projects if available
+        const dbProjects = data.map(p => ({
+          id: p.id,
+          title: p.title,
+          category: p.category,
+          description: p.description,
+          image: p.image_url || "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800",
+        }));
+        setFeaturedProjects(dbProjects);
+      } else {
+        // Fallback to static projects
+        setFeaturedProjects(staticProjects);
+      }
+    };
+
+    fetchFeaturedProjects();
+  }, []);
 
   return (
     <div className="min-h-screen">
@@ -97,8 +155,53 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* Why Choose Us Section */}
+      {/* Featured Projects Section */}
       <section className="py-20 bg-secondary">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-4xl font-bold mb-4">Featured Projects</h2>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              Showcasing our expertise across diverse building and infrastructure projects
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {featuredProjects.map((project, index) => (
+              <Card key={index} className="border-border overflow-hidden group hover:shadow-xl transition-all">
+                <div className="relative h-56 overflow-hidden">
+                  <img 
+                    src={project.image} 
+                    alt={project.title}
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                  <div className="absolute bottom-4 left-4 right-4">
+                    <span className="bg-primary text-primary-foreground text-xs px-3 py-1 rounded-full mb-2 inline-block">
+                      {project.category}
+                    </span>
+                    <h3 className="text-white font-semibold text-lg">{project.title}</h3>
+                  </div>
+                </div>
+                <CardContent className="p-4">
+                  <p className="text-muted-foreground text-sm">{project.description}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          <div className="text-center mt-12">
+            <Link to="/projects">
+              <Button size="lg" variant="outline">
+                View All Projects
+                <ArrowRight className="ml-2" size={20} />
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Why Choose Us Section */}
+      <section className="py-20">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div>

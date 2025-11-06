@@ -37,6 +37,9 @@ const Footer = () => {
               <Link to="/career" className="text-sm text-muted-foreground hover:text-primary transition-colors">
                 Career
               </Link>
+              <Link to="/contact" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+                Contact
+              </Link>
               <Link to="/login" className="text-sm text-muted-foreground hover:text-primary transition-colors">
                 Employee Portal
               </Link>
@@ -56,17 +59,25 @@ const Footer = () => {
           <div>
             <h4 className="font-semibold mb-4">Contact</h4>
             <div className="flex flex-col gap-3">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Mail size={16} className="text-primary" />
+              <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                <Mail size={16} className="text-primary mt-0.5 flex-shrink-0" />
                 <span>info@bimaided.com</span>
               </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Phone size={16} className="text-primary" />
-                <span>+1 (555) 123-4567</span>
+              <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                <Phone size={16} className="text-primary mt-0.5 flex-shrink-0" />
+                <div className="flex flex-col gap-1">
+                  <span>+880 1308-230988</span>
+                  <span>+880 1672-843230</span>
+                  <span>+880 1737-727342</span>
+                </div>
               </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <MapPin size={16} className="text-primary" />
-                <span>123 Business St, City</span>
+              <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                <MapPin size={16} className="text-primary mt-0.5 flex-shrink-0" />
+                <span>ECB, Dhaka Cantonment, Dhaka-1206, Bangladesh</span>
+              </div>
+              <div className="text-sm text-muted-foreground mt-2">
+                <p className="font-medium text-foreground">Open: Saturday-Thursday</p>
+                <p>Time: 8:00 am – 9:00 pm</p>
               </div>
             </div>
           </div>

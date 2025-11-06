@@ -296,7 +296,7 @@ const BIMModeling = () => {
       {/* Services Grid */}
       <section className="py-20 bg-secondary/30">
         <div className="container mx-auto px-4">
-          <div className="max-w-6xl mx-auto">
+          <div className="max-w-[95vw] mx-auto">
             <div className="text-center mb-16">
               <h2 className="text-4xl font-bold mb-4">Comprehensive BIM Modeling Solutions</h2>
               <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
@@ -313,40 +313,37 @@ const BIMModeling = () => {
                     className="service-card border-border hover:shadow-xl transition-all duration-500 group overflow-hidden opacity-0 translate-y-10"
                     style={{ transitionDelay: `${index * 150}ms` }}
                   >
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-0">
                       {/* Image Section - Alternating Position */}
-                      <div className={`relative h-80 md:h-auto overflow-hidden ${!isEven ? 'md:order-2' : ''}`}>
+                      <div className={`relative h-80 md:h-auto overflow-hidden md:col-span-2 ${!isEven ? 'md:order-2' : ''}`}>
                         <img 
                           src={service.img} 
                           alt={service.title}
                           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                         />
                         <div className={`absolute inset-0 bg-gradient-to-t ${isEven ? 'md:bg-gradient-to-r' : 'md:bg-gradient-to-l'} from-black/70 via-black/30 to-transparent`} />
-                        <div className="absolute bottom-4 left-4 md:bottom-auto md:top-4">
-                          <service.icon className="w-12 h-12 text-white mb-2" />
-                        </div>
                       </div>
                       
                       {/* Content Section */}
-                      <div className={`${!isEven ? 'md:order-1' : ''}`}>
-                        <CardHeader className="pb-4">
+                      <div className={`md:col-span-3 ${!isEven ? 'md:order-1' : ''}`}>
+                        <CardHeader className="pb-4 px-10 py-10">
                           <CardTitle className="text-2xl mb-3">{service.title}</CardTitle>
-                          <CardDescription className="text-base leading-relaxed mb-6">
+                          <CardDescription className="text-base leading-relaxed mb-8">
                             {service.description}
                           </CardDescription>
                           
                           {/* Strengths and Scopes in Same Row */}
-                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 mb-6">
                             {/* Strengths */}
-                            <div className="space-y-2">
-                              <h4 className="font-semibold text-sm text-primary uppercase tracking-wide flex items-center gap-2 mb-3">
-                                <Target className="w-4 h-4" />
+                            <div className="space-y-4 p-8 rounded-lg bg-secondary/30 min-h-[300px]">
+                              <h4 className="font-semibold text-base text-primary uppercase tracking-wide flex items-center gap-2 mb-5">
+                                <Target className="w-5 h-5" />
                                 Strengths
                               </h4>
-                              <ul className="space-y-1.5">
+                              <ul className="space-y-4">
                                 {service.strengths.map((strength, idx) => (
-                                  <li key={idx} className="flex items-start gap-2 text-xs text-muted-foreground">
-                                    <CheckCircle2 className="w-3.5 h-3.5 text-primary mt-0.5 flex-shrink-0" />
+                                  <li key={idx} className="flex items-start gap-3 text-sm text-muted-foreground leading-relaxed">
+                                    <CheckCircle2 className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
                                     <span>{strength}</span>
                                   </li>
                                 ))}
@@ -354,15 +351,15 @@ const BIMModeling = () => {
                             </div>
 
                             {/* Scopes */}
-                            <div className="space-y-2 p-3 bg-primary/5 rounded-lg border-l-2 border-primary">
-                              <h4 className="font-semibold text-sm text-primary uppercase tracking-wide flex items-center gap-2 mb-3">
-                                <Layers className="w-4 h-4" />
+                            <div className="space-y-4 p-8 bg-primary/5 rounded-lg border-l-4 border-primary min-h-[300px]">
+                              <h4 className="font-semibold text-base text-primary uppercase tracking-wide flex items-center gap-2 mb-5">
+                                <Layers className="w-5 h-5" />
                                 Scope of Services
                               </h4>
-                              <ul className="space-y-1.5">
+                              <ul className="space-y-4">
                                 {service.scopes.map((scope, idx) => (
-                                  <li key={idx} className="flex items-start gap-2 text-xs">
-                                    <ArrowRight className="w-3.5 h-3.5 text-primary mt-0.5 flex-shrink-0" />
+                                  <li key={idx} className="flex items-start gap-3 text-sm leading-relaxed">
+                                    <ArrowRight className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
                                     <span className="font-medium">{scope}</span>
                                   </li>
                                 ))}
@@ -485,21 +482,48 @@ const BIMModeling = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               {[
-                { step: "01", title: "Project Analysis", desc: "Review drawings and requirements" },
-                { step: "02", title: "Model Creation", desc: "Develop detailed 3D BIM models" },
-                { step: "03", title: "Quality Check", desc: "Clash detection and validation" },
-                { step: "04", title: "Delivery", desc: "Final model handover and support" },
+                { 
+                  step: "01", 
+                  title: "Project Analysis", 
+                  desc: "Review drawings and requirements",
+                  image: "/images/bim-services/freepik__plumbing-bim-visualization-showing-water-and-drain__21480.jpeg"
+                },
+                { 
+                  step: "02", 
+                  title: "Model Creation", 
+                  desc: "Develop detailed 3D BIM models",
+                  image: "/images/freepik__electrical-system-bim-visualization-showing-condui__21481.png"
+                },
+                { 
+                  step: "03", 
+                  title: "Quality Check", 
+                  desc: "Clash detection and validation",
+                  image: "/images/bim-services/freepik__fire-protection-system-in-bim-sprinklers-alarms-an__21482.jpeg"
+                },
+                { 
+                  step: "04", 
+                  title: "Delivery", 
+                  desc: "Final model handover and support",
+                  image: "/images/bim-services/freepik__infrastructure-bim-scene-featuring-underground-uti__21483.jpeg"
+                },
               ].map((process, index) => (
                 <div key={index} className="relative">
                   <div className="text-center">
-                    <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center">
-                      <span className="text-2xl font-bold text-primary">{process.step}</span>
+                    <div className="relative w-full aspect-square mb-4 rounded-lg overflow-hidden shadow-lg group">
+                      <img 
+                        src={process.image} 
+                        alt={process.title}
+                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-4">
+                        <span className="text-3xl font-bold text-white">{process.step}</span>
+                      </div>
                     </div>
                     <h3 className="font-semibold text-lg mb-2">{process.title}</h3>
                     <p className="text-muted-foreground text-sm">{process.desc}</p>
                   </div>
                   {index < 3 && (
-                    <div className="hidden md:block absolute top-8 left-[60%] w-[80%] h-0.5 bg-primary/20" />
+                    <div className="hidden md:block absolute top-[25%] left-[60%] w-[80%] h-0.5 bg-primary/20" />
                   )}
                 </div>
               ))}

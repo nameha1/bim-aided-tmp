@@ -28,9 +28,9 @@ const Login = () => {
             .single();
 
           if (!roleError && roleData) {
-            if (roleData.role === "Admin") {
+            if (roleData.role === "admin") {
               navigate("/admin");
-            } else if (roleData.role === "Employee") {
+            } else if (roleData.role === "employee") {
               navigate("/employee");
             }
           }
@@ -79,9 +79,9 @@ const Login = () => {
         });
 
         // Navigate based on role
-        if (roleData?.role === "Admin") {
+        if (roleData?.role === "admin") {
           navigate("/admin");
-        } else if (roleData?.role === "Employee") {
+        } else if (roleData?.role === "employee") {
           navigate("/employee");
         } else {
           toast({

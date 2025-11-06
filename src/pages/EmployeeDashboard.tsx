@@ -12,6 +12,8 @@ import AttendanceHistory from "@/components/employee/AttendanceHistory";
 import SupervisorLeaveRequests from "@/components/admin/SupervisorLeaveRequests";
 import MyAssignments from "@/components/employee/MyAssignments";
 import SupervisorAssignmentTeams from "@/components/employee/SupervisorAssignmentTeams";
+import HolidayCalendar from "@/components/employee/HolidayCalendar";
+import AttendanceCheckIn from "@/components/employee/AttendanceCheckIn";
 
 const EmployeeDashboard = () => {
   const [employeeData, setEmployeeData] = useState<any>(null);
@@ -232,11 +234,13 @@ const EmployeeDashboard = () => {
         <Tabs defaultValue="profile" className="space-y-4">
           <TabsList>
             <TabsTrigger value="profile">My Profile</TabsTrigger>
+            <TabsTrigger value="check-in">Attendance Check-In</TabsTrigger>
             <TabsTrigger value="assignments">My Assignments</TabsTrigger>
             {isAssignmentSupervisor && <TabsTrigger value="supervised-assignments">Supervised Assignments</TabsTrigger>}
             {isSupervisor && <TabsTrigger value="team-leaves">Team Leaves</TabsTrigger>}
             <TabsTrigger value="leave-request">Request Leave</TabsTrigger>
             <TabsTrigger value="attendance">Attendance History</TabsTrigger>
+            <TabsTrigger value="holiday-calendar">Holiday Calendar</TabsTrigger>
           </TabsList>
 
           <TabsContent value="profile">
@@ -249,6 +253,10 @@ const EmployeeDashboard = () => {
                 <EmployeeProfile employee={employeeData} />
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="check-in">
+            <AttendanceCheckIn employeeId={employeeData.id} />
           </TabsContent>
 
           <TabsContent value="assignments">
@@ -297,6 +305,18 @@ const EmployeeDashboard = () => {
               </CardHeader>
               <CardContent>
                 <AttendanceHistory employeeId={employeeData.id} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="holiday-calendar">
+            <Card className="border-border">
+              <CardHeader>
+                <CardTitle>Annual Holiday Calendar</CardTitle>
+                <CardDescription>View company and public holidays for 2025-2026</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <HolidayCalendar />
               </CardContent>
             </Card>
           </TabsContent>
