@@ -6,13 +6,6 @@
 const { createClient } = require('@supabase/supabase-js');
 
 exports.handler = async function(event, context) {
-  const supabaseUrl = process.env.VITE_SUPABASE_URL;
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
-
-  // Create Supabase client
-  const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-    auth: { persistSession: false }
-  });
   // CORS headers
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -27,6 +20,30 @@ exports.handler = async function(event, context) {
   }
 
   try {
+    // Log for debugging
+    console.log('Supabase proxy called with action:', event.queryStringParameters?.action);
+    
+    // Check environment variables
+    const supabaseUrl = process.env.VITE_SUPABASE_URL;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error('Missing environment variables:', { 
+        hasUrl: !!supabaseUrl, 
+        hasKey: !!supabaseServiceKey 
+      });
+      return {
+        statusCode: 500,
+        headers,
+        body: JSON.stringify({ error: 'Server configuration error - missing credentials' })
+      };
+    }
+
+    // Create Supabase client
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: { persistSession: false }
+    });
+
     const { action } = event.queryStringParameters || {};
     const body = event.body ? JSON.parse(event.body) : {};
 
@@ -100,6 +117,7 @@ exports.handler = async function(event, context) {
         };
 
       default:
+        console.error('Invalid action received:', action);
         return {
           statusCode: 400,
           headers,
@@ -109,10 +127,16 @@ exports.handler = async function(event, context) {
 
   } catch (error) {
     console.error('Supabase proxy error:', error);
+    console.error('Error stack:', error.stack);
+    console.error('Error message:', error.message);
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ error: 'Internal server error' })
+      body: JSON.stringify({ 
+        error: 'Internal server error',
+        message: error.message,
+        details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      })
     };
   }
 }
