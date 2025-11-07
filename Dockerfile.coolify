@@ -1,42 +1,46 @@
-# Coolify Deployment Configuration for BIM Portal
-# This file helps Coolify understand how to deploy your full-stack application
+# Multi-stage build for Coolify deployment
+FROM node:18-alpine AS builder
 
-# Frontend Build Configuration
-FROM node:18-alpine as frontend-build
 WORKDIR /app
+
+# Copy package files
 COPY package*.json ./
-RUN npm ci --only=production
+COPY bun.lockb* ./
+
+# Install ALL dependencies (including dev dependencies for build)
+RUN npm install
+
+# Copy source code
 COPY . .
+
+# Build the frontend
 RUN npm run build
 
-# Backend Build
-FROM node:18-alpine as backend-build
-WORKDIR /app/server
-COPY server/package*.json ./
-RUN npm ci --only=production
-COPY server/ .
+# Production stage
+FROM node:18-alpine AS production
 
-# Production Image - Serves both frontend and backend
-FROM node:18-alpine as production
 WORKDIR /app
 
-# Install serve to host static frontend files
-RUN npm install -g serve
-
-# Copy backend files
-COPY --from=backend-build /app/server ./server
+# Install server dependencies first
+COPY server/package*.json ./server/
 WORKDIR /app/server
-RUN npm ci --only=production
+RUN npm ci --omit=dev
 
-# Copy built frontend files
-COPY --from=frontend-build /app/dist ./public
+# Go back to app root
+WORKDIR /app
+
+# Copy built frontend from builder stage
+COPY --from=builder /app/dist ./server/public
+
+# Copy server files
+COPY server/ ./server/
 
 # Expose port
 EXPOSE 3001
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:3001/health || exit 1
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3001/api/health || exit 1
 
-# Start the application
-CMD ["node", "index.js"]
+# Start the server
+CMD ["node", "server/index.js"]
