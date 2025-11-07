@@ -94,76 +94,44 @@ const AddEmployeeForm = ({ onSuccess }: AddEmployeeFormProps) => {
     setLoading(true);
 
     try {
-      // Step 1: Create auth user account using Supabase Admin API
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email: formData.email,
-        password: formData.password,
-        email_confirm: true, // Auto-confirm email for admin-created accounts
-        user_metadata: {
-          first_name: formData.firstName,
-          last_name: formData.lastName,
-        }
+      // Get the current user's session token for authentication
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error('No active session. Please login again.');
+      }
+
+      // Call the admin API endpoint to create employee
+      const response = await fetch('http://localhost:3001/api/admin/create-employee', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          eid: formData.eid || null,
+          gender: formData.gender || null,
+          dateOfBirth: formData.dateOfBirth || null,
+          nationalId: formData.nationalId || null,
+          phoneNumber: formData.phone || null,
+          address: formData.address || null,
+          joiningDate: formData.joiningDate || new Date().toISOString().split('T')[0],
+          departmentId: formData.departmentId || null,
+          designationId: formData.designationId || null,
+          supervisorId: formData.supervisorId || null,
+        }),
       });
 
-      if (authError) {
-        console.error("Error creating auth user:", authError);
-        throw new Error(`Failed to create user account: ${authError.message}`);
-      }
+      const result = await response.json();
+      console.log("API Response:", result);
 
-      if (!authData.user) {
-        throw new Error("User creation succeeded but no user data returned");
-      }
-
-      console.log("Auth user created:", authData.user.id);
-
-      // Step 2: Create employee record
-      const { data: employeeData, error: employeeError } = await supabase
-        .from("employees")
-        .insert({
-          user_id: authData.user.id,
-          eid: formData.eid || null,
-          first_name: formData.firstName,
-          last_name: formData.lastName,
-          email: formData.email,
-          gender: (formData.gender as 'Male' | 'Female' | 'Other') || null,
-          date_of_birth: formData.dateOfBirth || null,
-          national_id: formData.nationalId || null,
-          phone_number: formData.phone || null,
-          address: formData.address || null,
-          joining_date: formData.joiningDate || new Date().toISOString().split('T')[0],
-          department_id: formData.departmentId || null,
-          designation_id: formData.designationId || null,
-          supervisor_id: formData.supervisorId || null,
-          employment_status: 'Active' as const,
-        })
-        .select()
-        .single();
-
-      if (employeeError) {
-        console.error("Error creating employee record:", employeeError);
-        // Rollback: Delete the auth user if employee creation fails
-        await supabase.auth.admin.deleteUser(authData.user.id);
-        throw new Error(`Failed to create employee record: ${employeeError.message}`);
-      }
-
-      console.log("Employee record created:", employeeData.id);
-
-      // Step 3: Assign employee role
-      const { error: roleError } = await supabase
-        .from("user_roles")
-        .insert({
-          user_id: authData.user.id,
-          role: 'employee',
-        });
-
-      if (roleError) {
-        console.error("Error assigning role:", roleError);
-        // Non-fatal error - employee is created but role assignment failed
-        toast({
-          title: "Employee created with warning",
-          description: "Employee account created but role assignment failed. Please assign role manually.",
-          variant: "default",
-        });
+      if (!response.ok || !result.success) {
+        console.error("Error creating employee:", result);
+        throw new Error(result.error || 'Failed to create employee');
       }
 
       toast({
