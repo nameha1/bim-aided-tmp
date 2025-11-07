@@ -94,22 +94,14 @@ const AddEmployeeForm = ({ onSuccess }: AddEmployeeFormProps) => {
     setLoading(true);
 
     try {
-      // Get the current user's session token for authentication
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        throw new Error('No active session. Please login again.');
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !sessionData.session) {
+        throw new Error(sessionError?.message || 'No active session. Please login again.');
       }
 
-      // Call the admin API endpoint to create employee
-      const apiUrl = import.meta.env.VITE_ADMIN_API_URL || 'http://localhost:3001';
-      const response = await fetch(`${apiUrl}/api/admin/create-employee`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({
+      // Invoke the 'create-employee' Supabase Edge Function
+      const { data: result, error: functionError } = await supabase.functions.invoke('create-employee', {
+        body: {
           email: formData.email,
           password: formData.password,
           firstName: formData.firstName,
@@ -124,15 +116,20 @@ const AddEmployeeForm = ({ onSuccess }: AddEmployeeFormProps) => {
           departmentId: formData.departmentId || null,
           designationId: formData.designationId || null,
           supervisorId: formData.supervisorId || null,
-        }),
+        },
       });
 
-      const result = await response.json();
-      console.log("API Response:", result);
+      if (functionError) {
+        // This error is thrown for non-2xx responses from the function
+        const errorDetails = await functionError.context?.json();
+        console.error("Error from Edge Function:", errorDetails);
+        throw new Error(errorDetails?.error || functionError.message);
+      }
 
-      if (!response.ok || !result.success) {
-        console.error("Error creating employee:", result);
-        throw new Error(result.error || 'Failed to create employee');
+      // The function might have run but returned a logical error
+      if (!result.success) {
+        console.error("Logical error from Edge Function:", result);
+        throw new Error(result.error || 'An unknown error occurred in the function.');
       }
 
       toast({
