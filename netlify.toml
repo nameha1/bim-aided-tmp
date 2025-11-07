@@ -1,17 +1,15 @@
-# Netlify Configuration for BIM Portal Frontend
+# Netlify Configuration for Full Stack BIM Portal
 [build]
   command = "npm run build"
   publish = "dist"
 
 [build.environment]
+  NODE_ENV = "production"
   NODE_VERSION = "18"
 
-# API Proxy to backend on Coolify
-[[redirects]]
-  from = "/api/*"
-  to = "https://backend-api.your-domain.com/api/:splat"
-  status = 200
-  force = true
+# Netlify Functions for API endpoints
+[functions]
+  directory = "netlify/functions"
 
 # SPA routing
 [[redirects]]

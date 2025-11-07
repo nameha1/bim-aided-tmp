@@ -1,68 +1,21 @@
-# 🚀 BIM Portal - Netlify + Coolify Deployment Guide
+# 🚀 BIM Portal - Netlify Full Stack Deployment
 
-## 📋 Architecture Overview
+## 📋 Simple Architecture
 
 ```
-Frontend (Netlify) → Backend API (Coolify) → Supabase (Coolify)
-     ↓                       ↓                      ↓
-React SPA Build        Node.js Express API     PostgreSQL DB
+Frontend + Backend (Netlify) → Supabase (Coolify)
+           ↓                           ↓
+React SPA + Netlify Functions    PostgreSQL DB
 ```
 
 **Benefits of this setup:**
-- ✅ **Netlify**: Excellent for React SPAs, CDN, automatic deployments
-- ✅ **Coolify Backend**: Your existing infrastructure, internal Supabase connection
-- ✅ **Supabase on Coolify**: Keep existing database, no migration needed
+- ✅ **Netlify**: Frontend + Backend serverless functions, CDN, auto-deployments
+- ✅ **Coolify**: Only for Supabase database (simplest setup)
+- ✅ **No separate backend**: Everything in one Netlify deployment
 
 ---
 
-## 🎯 Part 1: Deploy Backend API to Coolify
-
-### Step 1: Create Backend Service in Coolify
-
-1. **Login to your Coolify Dashboard**
-   - Go to your Coolify URL on Hostinger VPS
-
-2. **Create New Application**
-   - Click **"+ New"** → **"Application"**
-   - Choose **"Public Repository"**
-   - Repository URL: `https://github.com/tasneemlabeeb/bimsync-portal.git`
-   - Branch: `main`
-   - **Name**: `bim-portal-backend-api`
-
-3. **Configure Build Settings**
-   - Build Pack: **Docker**
-   - Dockerfile Location: `Dockerfile.backend`
-   - Port: `3001`
-   - Health Check URL: `/api/health`
-
-### Step 2: Backend Environment Variables
-
-Copy these to Coolify → Backend App → **Environment Variables**:
-
-```bash
-NODE_ENV=production
-PORT=3001
-VITE_SUPABASE_URL=http://supabasekong-i480ws8cosk4kwkskssck8o8.72.60.222.97.sslip.io
-VITE_SUPABASE_ANON_KEY=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...
-SUPABASE_SERVICE_KEY=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...
-DATABASE_URL=postgresql://postgres:417wIu14OxPmnQNpUCeieTSZ7IN6pYSa@supabase-db:5432/postgres
-JWT_SECRET=rt4h4cKZkKWezb8AwtUxN3buEKwEVqzO
-EMAIL_USER=bimaided.website@gmail.com
-EMAIL_PASSWORD=rwgy biho ilda memw
-EMAIL_TO=tasneemlabeeb@gmail.com
-VITE_RECAPTCHA_SITE_KEY=6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI
-RECAPTCHA_SECRET_KEY=your_recaptcha_secret_key_here
-```
-
-### Step 3: Deploy Backend
-
-1. **Deploy** in Coolify
-2. **Set Custom Domain** (e.g., `api.yourdomain.com`)
-3. **Test Backend**: Visit `https://api.yourdomain.com/api/health`
-
----
-
-## 🌐 Part 2: Deploy Frontend to Netlify
+## 🚀 Deploy to Netlify
 
 ### Step 1: Connect GitHub to Netlify
 
@@ -75,22 +28,60 @@ RECAPTCHA_SECRET_KEY=your_recaptcha_secret_key_here
 ```bash
 Build command: npm run build
 Publish directory: dist
+Functions directory: netlify/functions
 Node version: 18
 ```
 
-### Step 3: Frontend Environment Variables
+### Step 3: Environment Variables
 
 In Netlify → **Site settings** → **Environment variables**, add:
 
 ```bash
+# Frontend Variables
 VITE_SUPABASE_URL=http://supabasekong-i480ws8cosk4kwkskssck8o8.72.60.222.97.sslip.io
 VITE_SUPABASE_ANON_KEY=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...
-VITE_API_URL=https://api.yourdomain.com
+VITE_API_URL=https://your-app.netlify.app/.netlify/functions
 VITE_RECAPTCHA_SITE_KEY=6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI
+
+# Backend Functions Variables
+SUPABASE_SERVICE_KEY=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...
+JWT_SECRET=rt4h4cKZkKWezb8AwtUxN3buEKwEVqzO
+EMAIL_USER=bimaided.website@gmail.com
+EMAIL_PASSWORD=rwgy biho ilda memw
+EMAIL_TO=tasneemlabeeb@gmail.com
+RECAPTCHA_SECRET_KEY=your_recaptcha_secret_key_here
+
+# Build Settings
 NODE_ENV=production
 ```
 
-**Important**: Replace `https://api.yourdomain.com` with your actual Coolify backend domain.
+### Step 4: Deploy
+
+1. **Deploy** in Netlify (automatic after setup)
+2. **Test Deployment**:
+   - Frontend: `https://your-app.netlify.app`
+   - API Health: `https://your-app.netlify.app/.netlify/functions/api/health`
+   - Contact Form: Test the contact page
+
+---
+
+## 📱 What's Included
+
+**Netlify Functions Created:**
+- `/.netlify/functions/api` - Main API endpoints (employee creation, etc.)
+- `/.netlify/functions/contact` - Contact form email sending
+
+**Frontend Features:**
+- ✅ Project portfolio with image galleries
+- ✅ Contact forms with serverless email
+- ✅ Career page with job applications
+- ✅ Admin dashboard for management
+- ✅ Employee portal with attendance
+
+**Database (Coolify Supabase):**
+- ✅ All existing data preserved
+- ✅ Internal Coolify network performance
+- ✅ No migration needed
 
 **⚠️ IMPORTANT:** Use your PRODUCTION credentials, not the local development ones!
 
