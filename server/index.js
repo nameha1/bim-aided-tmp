@@ -25,10 +25,21 @@ app.use(express.json({ limit: '10mb' }));
 
 // Serve static frontend files in production
 if (process.env.NODE_ENV === 'production') {
-  // Serve static files from the public directory (built frontend)
-  app.use(express.static(join(__dirname, 'public')));
+  // Serve static files from the dist directory (built frontend)
+  app.use(express.static(join(__dirname, '../dist'), {
+    setHeaders: (res, path) => {
+      // Set proper MIME types for different file extensions
+      if (path.endsWith('.js')) {
+        res.setHeader('Content-Type', 'application/javascript');
+      } else if (path.endsWith('.css')) {
+        res.setHeader('Content-Type', 'text/css');
+      } else if (path.endsWith('.html')) {
+        res.setHeader('Content-Type', 'text/html');
+      }
+    }
+  }));
   
-  console.log('✅ Serving static files from:', join(__dirname, 'public'));
+  console.log('✅ Serving static files from:', join(__dirname, '../dist'));
 }
 
 // Google Drive Configuration
@@ -900,7 +911,7 @@ if (process.env.NODE_ENV === 'production') {
       return res.status(404).json({ error: 'API endpoint not found' });
     }
     
-    res.sendFile(join(__dirname, 'public', 'index.html'));
+    res.sendFile(join(__dirname, '../dist', 'index.html'));
   });
 }
 

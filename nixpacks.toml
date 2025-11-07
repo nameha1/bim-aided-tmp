@@ -1,0 +1,11 @@
+# Nixpacks Configuration for BIM Portal
+# Forces Nixpacks to use proper build process
+
+[phases.build]
+cmd = "npm ci && npm run build"
+
+[phases.start]
+cmd = "node server/index.js"
+
+[variables]
+NODE_ENV = "production"

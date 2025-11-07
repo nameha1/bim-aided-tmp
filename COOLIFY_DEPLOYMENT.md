@@ -26,10 +26,11 @@ This guide shows you how to deploy both your React frontend and Node.js backend 
    - Branch: `main`
 
 3. **Configure Build Settings**
-   - Build Pack: **Docker**
-   - Dockerfile Location: `Dockerfile.coolify` 
-   - Port: `3001`
-   - Health Check URL: `/health`
+   - Build Pack: **Docker** 
+   - Dockerfile Location: `Dockerfile`
+   - Port: `3000` (Nixpacks uses 3000 by default)
+   - Health Check URL: `/api/health`
+   - **Important**: Make sure "Use Dockerfile" is enabled
 
 #### Step 2: Environment Variables
 
