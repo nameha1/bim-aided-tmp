@@ -25,7 +25,7 @@ const LeaveRequests = ({ onUpdate }: LeaveRequestsProps) => {
         .from("attendance")
         .select(`
           *,
-          employees(first_name, last_name, email)
+          employees!attendance_employee_id_fkey(first_name, last_name, email)
         `)
         .eq("status", "Leave" as any)
         .order("date", { ascending: false });

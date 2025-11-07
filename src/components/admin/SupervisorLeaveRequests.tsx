@@ -40,7 +40,7 @@ const SupervisorLeaveRequests = ({ supervisorId, onUpdate }: SupervisorLeaveRequ
         .from("attendance")
         .select(`
           *,
-          employees(first_name, last_name, email, designations(name))
+          employees!attendance_employee_id_fkey(first_name, last_name, email, designations(name))
         `)
         .eq("status", "Leave" as any)
         .in("employee_id", employeeIds)

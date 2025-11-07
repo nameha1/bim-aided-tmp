@@ -72,7 +72,7 @@ const AttendanceRecords = () => {
           total_hours,
           manually_added,
           ip_address,
-          employees(id, first_name, last_name)
+          employees!attendance_employee_id_fkey(id, first_name, last_name)
         `)
         .eq("date", today)
         .order("check_in_time", { ascending: false });
@@ -102,7 +102,7 @@ const AttendanceRecords = () => {
           total_hours,
           manually_added,
           ip_address,
-          employees(id, first_name, last_name)
+          employees!attendance_employee_id_fkey(id, first_name, last_name)
         `)
         .gte("date", startDate)
         .lte("date", endDate)
