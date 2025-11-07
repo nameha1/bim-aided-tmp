@@ -3,17 +3,16 @@
  * Proxies requests to Supabase to handle SSL certificate issues
  */
 
-import { createClient } from '@supabase/supabase-js';
+const { createClient } = require('@supabase/supabase-js');
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
+exports.handler = async function(event, context) {
+  const supabaseUrl = process.env.VITE_SUPABASE_URL;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
 
-// Create Supabase client with HTTP (server-side, bypassing browser SSL validation)
-const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-  auth: { persistSession: false }
-});
-
-export default async function handler(event, context) {
+  // Create Supabase client
+  const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+    auth: { persistSession: false }
+  });
   // CORS headers
   const headers = {
     'Access-Control-Allow-Origin': '*',
