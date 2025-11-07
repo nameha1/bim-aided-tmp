@@ -4,8 +4,9 @@ import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Calendar, MapPin, Building2, Layers } from "lucide-react";
+import { ArrowLeft, Calendar, MapPin, Building2, Layers, X } from "lucide-react";
 import { format } from "date-fns";
 
 const ProjectDetail = () => {
@@ -13,6 +14,7 @@ const ProjectDetail = () => {
   const [project, setProject] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState<string>("");
+  const [imageModalOpen, setImageModalOpen] = useState(false);
 
   useEffect(() => {
     fetchProject();
@@ -30,8 +32,8 @@ const ProjectDetail = () => {
       
       if (data) {
         setProject(data);
-        // Use existing image_url field for now, will be updated after migration
-        setSelectedImage(data.image_url || "");
+        // Use preview_image as the main image
+        setSelectedImage(data.preview_image || data.image_url || "");
       }
     } catch (error) {
       console.error("Error fetching project:", error);
@@ -108,27 +110,40 @@ const ProjectDetail = () => {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Main Column */}
             <div className="lg:col-span-2 space-y-8">
-              {/* Featured Image */}
-              {selectedImage && (
+              {/* Preview Image - Main featured image */}
+              {(project.preview_image || project.image_url) && (
                 <Card className="overflow-hidden">
                   <img
-                    src={selectedImage}
+                    src={project.preview_image || project.image_url}
                     alt={project.title}
                     className="w-full h-[500px] object-cover"
                   />
                 </Card>
               )}
 
-              {/* Image Gallery */}
+              {/* Description/Scope - Immediately after preview image */}
+              {project.scope && (
+                <Card>
+                  <CardContent className="pt-6">
+                    <h2 className="text-2xl font-bold mb-4">Project Description</h2>
+                    <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">{project.scope}</p>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Gallery Images - Additional photos after description */}
               {galleryImages.length > 0 && (
                 <div>
-                  <h2 className="text-2xl font-bold mb-4">Project Gallery</h2>
+                  <h2 className="text-2xl font-bold mb-4">Additional Photos</h2>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                     {galleryImages.map((img, index) => (
                       <Card
                         key={index}
                         className="overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary transition-all"
-                        onClick={() => setSelectedImage(img)}
+                        onClick={() => {
+                          setSelectedImage(img);
+                          setImageModalOpen(true);
+                        }}
                       >
                         <img
                           src={img}
@@ -139,16 +154,6 @@ const ProjectDetail = () => {
                     ))}
                   </div>
                 </div>
-              )}
-
-              {/* Scope */}
-              {project.scope && (
-                <Card>
-                  <CardContent className="pt-6">
-                    <h2 className="text-2xl font-bold mb-4">Project Scope</h2>
-                    <p className="text-muted-foreground whitespace-pre-wrap">{project.scope}</p>
-                  </CardContent>
-                </Card>
               )}
 
               {/* Technologies */}
@@ -240,6 +245,27 @@ const ProjectDetail = () => {
           </div>
         </div>
       </section>
+
+      {/* Image Modal */}
+      <Dialog open={imageModalOpen} onOpenChange={setImageModalOpen}>
+        <DialogContent className="max-w-5xl p-0 overflow-hidden">
+          <div className="relative">
+            <img
+              src={selectedImage}
+              alt="Gallery view"
+              className="w-full h-auto max-h-[90vh] object-contain"
+            />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute top-2 right-2 bg-black/50 hover:bg-black/70 text-white"
+              onClick={() => setImageModalOpen(false)}
+            >
+              <X size={20} />
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Footer />
     </div>
