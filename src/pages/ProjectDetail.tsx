@@ -85,7 +85,7 @@ const ProjectDetail = () => {
     <div className="min-h-screen">
       <Navigation />
       
-      {/* Hero Section */}
+      {/* Hero Section with Title */}
       <section className="pt-24 pb-8 bg-gradient-to-b from-secondary to-background">
         <div className="container mx-auto px-4">
           <Link to="/projects">
@@ -98,8 +98,8 @@ const ProjectDetail = () => {
             <span className="inline-block bg-primary text-primary-foreground text-sm px-3 py-1 rounded-full mb-4">
               {project.category}
             </span>
+            {/* Title First */}
             <h1 className="text-4xl md:text-5xl font-bold mb-4">{project.title}</h1>
-            <p className="text-xl text-muted-foreground">{project.description}</p>
           </div>
         </div>
       </section>
@@ -110,7 +110,7 @@ const ProjectDetail = () => {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Main Column */}
             <div className="lg:col-span-2 space-y-8">
-              {/* Preview Image - Main featured image */}
+              {/* Preview Image - Second (after title) */}
               {(project.preview_image || project.image_url) && (
                 <Card className="overflow-hidden">
                   <img
@@ -121,20 +121,22 @@ const ProjectDetail = () => {
                 </Card>
               )}
 
-              {/* Description/Scope - Immediately after preview image */}
-              {project.scope && (
+              {/* Description - Third (after preview image) */}
+              {(project.description || project.scope) && (
                 <Card>
                   <CardContent className="pt-6">
-                    <h2 className="text-2xl font-bold mb-4">Project Description</h2>
-                    <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">{project.scope}</p>
+                    <h2 className="text-2xl font-bold mb-4">Description</h2>
+                    <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
+                      {project.scope || project.description}
+                    </p>
                   </CardContent>
                 </Card>
               )}
 
-              {/* Gallery Images - Additional photos after description */}
+              {/* Gallery Images - Fourth (after description) */}
               {galleryImages.length > 0 && (
                 <div>
-                  <h2 className="text-2xl font-bold mb-4">Additional Photos</h2>
+                  <h2 className="text-2xl font-bold mb-4">Other Images</h2>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                     {galleryImages.map((img, index) => (
                       <Card
