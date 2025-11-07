@@ -45,3 +45,6 @@ admin-api/.env
 .temp
 supabase/.branches
 supabase/.temp
+.next/
+node_modules/
+.env.local
