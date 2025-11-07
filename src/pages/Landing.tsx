@@ -66,6 +66,14 @@ const Landing = () => {
     },
   ];
 
+  // Helper function to truncate description to 30 words
+  const truncateDescription = (text: string, maxWords: number = 30) => {
+    if (!text) return '';
+    const words = text.split(' ');
+    if (words.length <= maxWords) return text;
+    return words.slice(0, maxWords).join(' ') + '...';
+  };
+
   // Fetch featured projects from database
   useEffect(() => {
     const fetchFeaturedProjects = async () => {
@@ -82,13 +90,16 @@ const Landing = () => {
           id: p.id,
           title: p.title,
           category: p.category,
-          description: p.description,
-          image: p.image_url || "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800",
+          description: truncateDescription(p.description || p.scope || ''),
+          image: p.preview_image || p.image_url || "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1920",
         }));
         setFeaturedProjects(dbProjects);
       } else {
         // Fallback to static projects
-        setFeaturedProjects(staticProjects);
+        setFeaturedProjects(staticProjects.map(p => ({
+          ...p,
+          description: truncateDescription(p.description),
+        })));
       }
     };
 
@@ -167,25 +178,30 @@ const Landing = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {featuredProjects.map((project, index) => (
-              <Card key={index} className="border-border overflow-hidden group hover:shadow-xl transition-all">
-                <div className="relative h-56 overflow-hidden">
-                  <img 
-                    src={project.image} 
-                    alt={project.title}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                  <div className="absolute bottom-4 left-4 right-4">
-                    <span className="bg-primary text-primary-foreground text-xs px-3 py-1 rounded-full mb-2 inline-block">
-                      {project.category}
-                    </span>
-                    <h3 className="text-white font-semibold text-lg">{project.title}</h3>
+              <Link key={index} to={`/projects/${project.id}`}>
+                <Card className="border-border overflow-hidden group hover:shadow-xl transition-all cursor-pointer h-full">
+                  <div className="relative h-64 overflow-hidden">
+                    <img 
+                      src={project.image} 
+                      alt={project.title}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                      loading="lazy"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+                    <div className="absolute bottom-4 left-4 right-4">
+                      <span className="bg-primary text-primary-foreground text-xs px-3 py-1 rounded-full mb-2 inline-block">
+                        {project.category}
+                      </span>
+                      <h3 className="text-white font-semibold text-lg line-clamp-2">{project.title}</h3>
+                    </div>
                   </div>
-                </div>
-                <CardContent className="p-4">
-                  <p className="text-muted-foreground text-sm">{project.description}</p>
-                </CardContent>
-              </Card>
+                  <CardContent className="p-5">
+                    <p className="text-muted-foreground text-sm leading-relaxed line-clamp-3">
+                      {project.description}
+                    </p>
+                  </CardContent>
+                </Card>
+              </Link>
             ))}
           </div>
 

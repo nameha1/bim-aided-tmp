@@ -192,11 +192,12 @@ const Projects = () => {
                 className="border-border overflow-hidden hover:shadow-xl transition-all group cursor-pointer"
                 onClick={() => handleProjectClick(project.id)}
               >
-                <div className="relative h-48 overflow-hidden">
+                <div className="relative h-56 overflow-hidden">
                   <img 
                     src={project.image} 
                     alt={project.title}
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                    loading="lazy"
                   />
                   <div className="absolute top-4 right-4">
                     <span className="bg-primary text-primary-foreground text-xs px-3 py-1 rounded-full">
@@ -205,8 +206,8 @@ const Projects = () => {
                   </div>
                 </div>
                 <CardHeader>
-                  <CardTitle>{project.title}</CardTitle>
-                  <CardDescription>{project.description}</CardDescription>
+                  <CardTitle className="line-clamp-2">{project.title}</CardTitle>
+                  <CardDescription className="line-clamp-2">{project.description}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <Button variant="outline" className="w-full">

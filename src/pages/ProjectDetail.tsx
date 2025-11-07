@@ -116,7 +116,8 @@ const ProjectDetail = () => {
                   <img
                     src={project.preview_image || project.image_url}
                     alt={project.title}
-                    className="w-full h-[500px] object-cover"
+                    className="w-full h-auto max-h-[600px] object-cover"
+                    loading="eager"
                   />
                 </Card>
               )}
