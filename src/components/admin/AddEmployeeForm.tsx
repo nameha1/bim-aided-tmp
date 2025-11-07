@@ -102,7 +102,8 @@ const AddEmployeeForm = ({ onSuccess }: AddEmployeeFormProps) => {
       }
 
       // Call the admin API endpoint to create employee
-      const response = await fetch('http://localhost:3001/api/admin/create-employee', {
+      const apiUrl = import.meta.env.VITE_ADMIN_API_URL || 'http://localhost:3001';
+      const response = await fetch(`${apiUrl}/api/admin/create-employee`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
