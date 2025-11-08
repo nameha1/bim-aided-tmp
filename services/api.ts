@@ -66,7 +66,7 @@ export const employeeService = {
       .eq('id', id)
       .single();
     if (error) handleError(error, 'fetch employee');
-    return data as Employee;
+    return data as any as Employee;
   },
 
   async getByAuthUserId(authUserId: string) {
@@ -76,7 +76,7 @@ export const employeeService = {
       .eq('auth_user_id', authUserId)
       .single();
     if (error) handleError(error, 'fetch employee profile');
-    return data as Employee;
+    return data as any as Employee;
   },
 
   async create(employee: EmployeeInsert) {
