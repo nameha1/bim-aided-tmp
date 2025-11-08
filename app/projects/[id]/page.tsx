@@ -38,8 +38,8 @@ export default function ProjectDetail() {
       
       if (data) {
         setProject(data);
-        // Use preview_image as the main image
-        setSelectedImage(data.preview_image || data.image_url || "");
+        // Use image_url as the main image
+        setSelectedImage(data.image_url || "");
       }
     } catch (error) {
       console.error("Error fetching project:", error);
@@ -117,10 +117,10 @@ export default function ProjectDetail() {
             {/* Main Column */}
             <div className="lg:col-span-2 space-y-8">
               {/* Preview Image - Second (after title) */}
-              {(project.preview_image || project.image_url) && (
+              {project.image_url && (
                 <Card className="overflow-hidden">
                   <img
-                    src={project.preview_image || project.image_url}
+                    src={project.image_url}
                     alt={project.title}
                     className="w-full h-auto max-h-[600px] object-cover"
                     loading="eager"
@@ -129,12 +129,12 @@ export default function ProjectDetail() {
               )}
 
               {/* Description - Third (after preview image) */}
-              {(project.description || project.scope) && (
+              {project.description && (
                 <Card>
                   <CardContent className="pt-6">
                     <h2 className="text-2xl font-bold mb-4">Description</h2>
                     <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                      {project.scope || project.description}
+                      {project.description}
                     </p>
                   </CardContent>
                 </Card>
@@ -165,24 +165,7 @@ export default function ProjectDetail() {
                 </div>
               )}
 
-              {/* Technologies */}
-              {project.technologies && Array.isArray(project.technologies) && project.technologies.length > 0 && (
-                <Card>
-                  <CardContent className="pt-6">
-                    <h2 className="text-2xl font-bold mb-4">Technologies Used</h2>
-                    <div className="flex flex-wrap gap-2">
-                      {project.technologies.map((tech: string, index: number) => (
-                        <span
-                          key={index}
-                          className="px-3 py-1 bg-secondary text-sm rounded-full"
-                        >
-                          {tech}
-                        </span>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+
             </div>
 
             {/* Sidebar */}
@@ -198,26 +181,6 @@ export default function ProjectDetail() {
                       <div>
                         <p className="text-sm font-medium text-muted-foreground">Client</p>
                         <p className="font-semibold">{project.client_name}</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {project.location && (
-                    <div className="flex items-start gap-3">
-                      <MapPin size={20} className="text-primary mt-0.5" />
-                      <div>
-                        <p className="text-sm font-medium text-muted-foreground">Location</p>
-                        <p className="font-semibold">{project.location}</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {project.lod && (
-                    <div className="flex items-start gap-3">
-                      <Layers size={20} className="text-primary mt-0.5" />
-                      <div>
-                        <p className="text-sm font-medium text-muted-foreground">Level of Detail</p>
-                        <p className="font-semibold">{project.lod}</p>
                       </div>
                     </div>
                   )}
