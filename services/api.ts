@@ -60,23 +60,23 @@ export const employeeService = {
   },
 
   async getById(id: string): Promise<Employee> {
-    const result = await supabase
+    const result: any = await supabase
       .from('employees')
       .select('*, departments(name)')
       .eq('id', id)
       .single();
     if (result.error) handleError(result.error, 'fetch employee');
-    return result.data as any;
+    return result.data;
   },
 
   async getByAuthUserId(authUserId: string): Promise<Employee> {
-    const result = await supabase
+    const result: any = await supabase
       .from('employees')
       .select('*, departments(name)')
       .eq('auth_user_id', authUserId)
       .single();
     if (result.error) handleError(result.error, 'fetch employee profile');
-    return result.data as any;
+    return result.data;
   },
 
   async create(employee: EmployeeInsert) {
