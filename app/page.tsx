@@ -92,8 +92,8 @@ export default function Landing() {
           id: p.id,
           title: p.title,
           category: p.category,
-          description: truncateDescription(p.description || p.scope || ''),
-          image: p.preview_image || p.image_url || "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1920",
+          description: truncateDescription(p.description || ''),
+          image: p.image_url || "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1920",
         }));
         setFeaturedProjects(dbProjects);
       } else {

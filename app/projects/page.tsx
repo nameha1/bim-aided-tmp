@@ -132,7 +132,7 @@ export default function Projects() {
           title: p.title,
           category: p.category,
           description: p.description,
-          image: p.preview_image || p.image_url || "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800",
+          image: p.image_url || "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800",
           client_name: p.client_name,
           completion_date: p.completion_date,
           project_value: p.project_value,

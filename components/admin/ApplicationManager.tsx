@@ -47,7 +47,7 @@ interface Application {
   applicant_phone: string;
   cv_url: string;
   status: string;
-  applied_at: string;
+  created_at: string;
   job_postings?: {
     title: string;
   };
@@ -91,7 +91,7 @@ const ApplicationManager = () => {
           *,
           job_postings:career_postings(title)
         `)
-        .order("applied_at", { ascending: false });
+        .order("created_at", { ascending: false });
 
       if (error) throw error;
 
@@ -302,7 +302,7 @@ const ApplicationManager = () => {
                         {application.job_postings?.title || "N/A"}
                       </TableCell>
                       <TableCell>
-                        {new Date(application.applied_at).toLocaleDateString()}
+                        {new Date(application.created_at).toLocaleDateString()}
                       </TableCell>
                       <TableCell>{getStatusBadge(application.status)}</TableCell>
                       <TableCell>
@@ -412,7 +412,7 @@ const ApplicationManager = () => {
                     Applied Date
                   </label>
                   <p className="text-base">
-                    {new Date(selectedApplication.applied_at).toLocaleString()}
+                    {new Date(selectedApplication.created_at).toLocaleString()}
                   </p>
                 </div>
 

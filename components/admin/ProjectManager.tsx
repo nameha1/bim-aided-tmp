@@ -34,9 +34,6 @@ const ProjectManager = () => {
     description: "",
     clientName: "",
     completionDate: "",
-    lod: "",
-    location: "",
-    scope: "",
     published: true,
   });
   
@@ -71,9 +68,6 @@ const ProjectManager = () => {
       description: "",
       clientName: "",
       completionDate: "",
-      lod: "",
-      location: "",
-      scope: "",
       published: true,
     });
     setPreviewImage(null);
@@ -148,7 +142,7 @@ const ProjectManager = () => {
     setUploading(true);
 
     try {
-      let previewImageUrl = editingProject?.preview_image || "";
+      let mainImageUrl = editingProject?.image_url || "";
       const galleryImageUrls = [
         editingProject?.gallery_image_1 || "",
         editingProject?.gallery_image_2 || "",
@@ -157,9 +151,9 @@ const ProjectManager = () => {
         editingProject?.gallery_image_5 || "",
       ];
 
-      // Upload preview image if changed
+      // Upload main image if changed
       if (previewImage) {
-        previewImageUrl = await uploadImage(previewImage, 'project-images', 'preview/');
+        mainImageUrl = await uploadImage(previewImage, 'project-images', 'main/');
       }
 
       // Upload gallery images if changed
@@ -173,7 +167,7 @@ const ProjectManager = () => {
         title: formData.title,
         category: formData.category,
         description: formData.description,
-        preview_image: previewImageUrl || null,
+        image_url: mainImageUrl || null,
         gallery_image_1: galleryImageUrls[0] || null,
         gallery_image_2: galleryImageUrls[1] || null,
         gallery_image_3: galleryImageUrls[2] || null,
@@ -181,9 +175,6 @@ const ProjectManager = () => {
         gallery_image_5: galleryImageUrls[4] || null,
         client_name: formData.clientName || null,
         completion_date: formData.completionDate || null,
-        lod: formData.lod || null,
-        location: formData.location || null,
-        scope: formData.scope || null,
         published: formData.published,
       } as any;
 
@@ -242,15 +233,12 @@ const ProjectManager = () => {
       description: project.description,
       clientName: project.client_name || "",
       completionDate: project.completion_date || "",
-      lod: project.lod || "",
-      location: project.location || "",
-      scope: project.scope || "",
       published: project.published,
     });
     
     // Set existing image URLs
-    if (project.preview_image) {
-      setPreviewUrl(project.preview_image);
+    if (project.image_url) {
+      setPreviewUrl(project.image_url);
     }
     
     const existingGalleryUrls = [
@@ -336,16 +324,6 @@ const ProjectManager = () => {
                       ))}
                     </SelectContent>
                   </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="lod">LOD (Level of Detail)</Label>
-                  <Input
-                    id="lod"
-                    value={formData.lod}
-                    onChange={(e) => setFormData({ ...formData, lod: e.target.value })}
-                    placeholder="e.g., LOD 300, LOD 400"
-                  />
                 </div>
               </div>
 
@@ -437,27 +415,6 @@ const ProjectManager = () => {
                     onChange={(e) => setFormData({ ...formData, completionDate: e.target.value })}
                   />
                 </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="location">Location</Label>
-                <Input
-                  id="location"
-                  value={formData.location}
-                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                  placeholder="City, Country"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="scope">Scope</Label>
-                <Textarea
-                  id="scope"
-                  value={formData.scope}
-                  onChange={(e) => setFormData({ ...formData, scope: e.target.value })}
-                  rows={3}
-                  placeholder="Project scope and deliverables..."
-                />
               </div>
 
               <div className="flex items-center space-x-2">
