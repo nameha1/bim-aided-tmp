@@ -6,7 +6,6 @@ import Footer from "@/components/Footer";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { MapPin, Briefcase, Clock, ExternalLink } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import JobApplicationDialog from "@/components/JobApplicationDialog";
 import JobDetailsDialog from "@/components/JobDetailsDialog";
 
@@ -18,33 +17,24 @@ export default function Career() {
 
   useEffect(() => {
     const fetchCareerPostings = async () => {
-      const { data } = await (supabase as any)
-        .from("job_postings")
-        .select("*")
-        .eq("status", "active")
-        .order("created_at", { ascending: false });
-
-      if (data && data.length > 0) {
-        setOpenings(data);
-      } else {
-        // Fallback to static data if no postings
-        setOpenings([
-          {
-            title: "Senior BIM Manager",
-            department: "BIM Services",
-            location: "Remote",
-            employment_type: "full_time",
-            description: "Lead BIM coordination and implementation for large-scale projects.",
-          },
-          {
-            title: "Revit Modeler",
-            department: "Modeling",
-            location: "Hybrid",
-            employment_type: "full_time",
-            description: "Create detailed architectural and structural BIM models.",
-          },
-        ]);
-      }
+      // TODO: Migrate to Firebase - using fallback data for now
+      // Fallback to static data
+      setOpenings([
+        {
+          title: "Senior BIM Manager",
+          department: "BIM Services",
+          location: "Remote",
+          employment_type: "full_time",
+          description: "Lead BIM coordination and implementation for large-scale projects.",
+        },
+        {
+          title: "Revit Modeler",
+          department: "Modeling",
+          location: "Hybrid",
+          employment_type: "full_time",
+          description: "Create detailed architectural and structural BIM models.",
+        },
+      ]);
     };
 
     fetchCareerPostings();

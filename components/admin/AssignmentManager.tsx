@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { getDocuments, createDocument, updateDocument, deleteDocument, getDocument } from "@/lib/firebase/firestore";
+import { where, orderBy } from "firebase/firestore";
+import { auth } from "@/lib/firebase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -100,13 +102,11 @@ const AssignmentManager = () => {
 
   const fetchAssignments = async () => {
     try {
-      const { data, error } = await supabase
-        .from("project_assignments" as any)
-        .select("*")
-        .order("created_at", { ascending: false });
+      const { data, error } = await getDocuments("assignments", [
+        orderBy("created_at", "desc")
+      ]);
 
       if (error) {
-        // If project_assignments table doesn't exist yet, just set empty assignments
         console.log("Assignments feature not yet available:", error);
         setAssignments([]);
         setLoading(false);
@@ -117,31 +117,39 @@ const AssignmentManager = () => {
       const assignmentsWithMembers = await Promise.all(
         (data || []).map(async (assignment: any) => {
           // Fetch team members
-          const { data: members } = await supabase
-            .from("assignment_members" as any)
-            .select(`
-              id,
-              role,
-              personal_note,
-              employee_id,
-              employees!inner(first_name, last_name, email)
-            `)
-            .eq("assignment_id", assignment.id);
+          const { data: members } = await getDocuments("assignment_members", [
+            where("assignment_id", "==", assignment.id)
+          ]);
+
+          // Enrich members with employee details
+          const enrichedMembers = await Promise.all(
+            (members || []).map(async (member: any) => {
+              const { data: employee } = await getDocument("employees", member.employee_id);
+              return {
+                ...member,
+                employee_name: employee?.name || "Unknown",
+                employee_email: employee?.email || ""
+              };
+            })
+          );
 
           // Fetch supervisor details if supervisor_id exists
           let supervisor = null;
           if (assignment.supervisor_id) {
-            const { data: supervisorData } = await supabase
-              .from("employees")
-              .select("id, first_name, last_name, email")
-              .eq("id", assignment.supervisor_id)
-              .single();
-            supervisor = supervisorData;
+            const { data: supervisorData } = await getDocument("employees", assignment.supervisor_id);
+            if (supervisorData) {
+              supervisor = {
+                id: supervisorData.id,
+                first_name: supervisorData.name?.split(' ')[0] || '',
+                last_name: supervisorData.name?.split(' ').slice(1).join(' ') || '',
+                email: supervisorData.email
+              };
+            }
           }
 
           return {
             ...assignment,
-            members: members || [],
+            members: enrichedMembers,
             supervisor: supervisor
           };
         })
@@ -158,17 +166,19 @@ const AssignmentManager = () => {
 
   const fetchEmployees = async () => {
     try {
-      const { data, error } = await supabase
-        .from("employees")
-        .select("id, first_name, last_name, email")
-        .eq("employment_status", "Active")
-        .order("first_name");
+      // Fetch all employees without compound query to avoid index requirement
+      const { data, error } = await getDocuments("employees");
 
       if (error) throw error;
       
-      const employeesWithFullName = (data || []).map(emp => ({
+      // Filter and sort in JavaScript
+      const activeEmployees = (data || [])
+        .filter(emp => emp.status === "active")
+        .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+      
+      const employeesWithFullName = activeEmployees.map(emp => ({
         id: emp.id,
-        full_name: `${emp.first_name} ${emp.last_name}`,
+        full_name: emp.name,
         email: emp.email,
       }));
       
@@ -176,7 +186,7 @@ const AssignmentManager = () => {
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "Failed to load employees",
         variant: "destructive",
       });
     }
@@ -207,86 +217,61 @@ const AssignmentManager = () => {
     }
 
     try {
-      const { data: userData } = await supabase.auth.getUser();
-      const { data: employeeData } = await supabase
-        .from("employees")
-        .select("id")
-        .eq("user_id", userData.user?.id)
-        .single();
+      // Get session from API instead of client auth
+      const sessionRes = await fetch('/api/auth/session');
+      const sessionData = await sessionRes.json();
+      
+      if (!sessionData.user) {
+        throw new Error("User not authenticated");
+      }
+
+      // Get current employee ID
+      const { data: users } = await getDocuments("users", [
+        where("auth_uid", "==", sessionData.user.uid)
+      ]);
+      const employeeId = users?.[0]?.employee_id;
 
       if (isEditing && editingAssignmentId) {
-        // Update existing assignment
-        const { error: assignmentError } = await supabase
-          .from("project_assignments" as any)
-          .update({
+        // Use API to update assignment
+        const response = await fetch('/api/update-assignment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            assignmentId: editingAssignmentId,
             title,
             project_note: projectNote || null,
             start_date: startDate,
             deadline,
             supervisor_id: supervisorId && supervisorId !== 'none' ? supervisorId : null,
+            members: selectedMembers.filter(m => m.employee_id && m.role)
           })
-          .eq("id", editingAssignmentId);
+        });
 
-        if (assignmentError) throw assignmentError;
-
-        // Delete existing members
-        await supabase
-          .from("assignment_members" as any)
-          .delete()
-          .eq("assignment_id", editingAssignmentId);
-
-        // Add new members
-        const membersToInsert = selectedMembers
-          .filter(m => m.employee_id && m.role)
-          .map(m => ({
-            assignment_id: editingAssignmentId,
-            employee_id: m.employee_id,
-            role: m.role,
-            personal_note: m.personal_note || null,
-          }));
-
-        const { error: membersError } = await supabase
-          .from("assignment_members" as any)
-          .insert(membersToInsert);
-
-        if (membersError) throw membersError;
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message);
 
         toast({
           title: "Success",
           description: "Assignment updated successfully",
         });
       } else {
-        // Create new assignment
-        const { data: assignment, error: assignmentError } = await supabase
-          .from("project_assignments" as any)
-          .insert({
+        // Use API to create assignment
+        const response = await fetch('/api/create-assignment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
             title,
             project_note: projectNote || null,
             start_date: startDate,
             deadline,
             supervisor_id: supervisorId && supervisorId !== 'none' ? supervisorId : null,
-            created_by: employeeData?.id,
+            created_by: employeeId,
+            members: selectedMembers.filter(m => m.employee_id && m.role)
           })
-          .select()
-          .single();
+        });
 
-        if (assignmentError) throw assignmentError;
-
-        // Add members
-        const membersToInsert = selectedMembers
-          .filter(m => m.employee_id && m.role)
-          .map(m => ({
-            assignment_id: (assignment as any).id,
-            employee_id: m.employee_id,
-            role: m.role,
-            personal_note: m.personal_note || null,
-          }));
-
-        const { error: membersError } = await supabase
-          .from("assignment_members" as any)
-          .insert(membersToInsert);
-
-        if (membersError) throw membersError;
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message);
 
         toast({
           title: "Success",
@@ -338,23 +323,30 @@ const AssignmentManager = () => {
 
   const handleApproveAssignment = async (assignmentId: string) => {
     try {
-      const { data: userData } = await supabase.auth.getUser();
-      const { data: employeeData } = await supabase
-        .from("employees")
-        .select("id")
-        .eq("user_id", userData.user?.id)
-        .single();
+      // Get session from API instead of client auth
+      const sessionRes = await fetch('/api/auth/session');
+      const sessionData = await sessionRes.json();
+      
+      if (!sessionData.user) throw new Error("User not authenticated");
 
-      const { error } = await supabase
-        .from("project_assignments" as any)
-        .update({
+      // Get current employee ID
+      const { data: users } = await getDocuments("users", [
+        where("auth_uid", "==", sessionData.user.uid)
+      ]);
+      const employeeId = users?.[0]?.employee_id;
+
+      const response = await fetch('/api/update-assignment-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          assignmentId,
           status: "approved",
-          approved_by: employeeData?.id,
-          approved_at: new Date().toISOString(),
+          approved_by: employeeId
         })
-        .eq("id", assignmentId);
+      });
 
-      if (error) throw error;
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message);
 
       toast({
         title: "Success",
@@ -375,12 +367,14 @@ const AssignmentManager = () => {
     if (!assignmentToDelete) return;
 
     try {
-      const { error } = await supabase
-        .from("project_assignments" as any)
-        .delete()
-        .eq("id", assignmentToDelete);
+      const response = await fetch('/api/delete-assignment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assignmentId: assignmentToDelete })
+      });
 
-      if (error) throw error;
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message);
 
       toast({
         title: "Success",

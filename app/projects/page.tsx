@@ -6,7 +6,6 @@ import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
 
 export default function Projects() {
   const categories = [
@@ -119,29 +118,8 @@ export default function Projects() {
   // Fetch projects from database
   useEffect(() => {
     const fetchProjects = async () => {
-      const { data, error } = await supabase
-        .from("projects")
-        .select("*")
-        .eq("published", true)
-        .order("created_at", { ascending: false });
-
-      if (data && data.length > 0) {
-        // Use database projects if available
-        const dbProjects = data.map((p: any) => ({
-          id: p.id,
-          title: p.title,
-          category: p.category,
-          description: p.description,
-          image: p.image_url || "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800",
-          client_name: p.client_name,
-          completion_date: p.completion_date,
-          project_value: p.project_value,
-        }));
-        setFilteredProjects(selectedCategory === "All" ? dbProjects : dbProjects.filter((p: any) => p.category === selectedCategory));
-      } else {
-        // Fallback to static projects
-        setFilteredProjects(selectedCategory === "All" ? projects : projects.filter(p => p.category === selectedCategory));
-      }
+      // TODO: Migrate to Firebase - using static fallback for now
+      setFilteredProjects(selectedCategory === "All" ? projects : projects.filter(p => p.category === selectedCategory));
     };
 
     fetchProjects();

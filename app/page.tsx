@@ -9,7 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import ParallaxHero from "@/components/ParallaxHero";
-import { supabase } from "@/integrations/supabase/client";
+import { getDocuments } from "@/lib/firebase/firestore";
+import { where, orderBy as firestoreOrderBy, limit as firestoreLimit } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { Building2, Layers, Box, Globe, ArrowRight, CheckCircle2, Send } from "lucide-react";
 
@@ -97,12 +98,11 @@ export default function Landing() {
   // Fetch featured projects from database
   useEffect(() => {
     const fetchFeaturedProjects = async () => {
-      const { data, error } = await supabase
-        .from("projects")
-        .select("*")
-        .eq("published", true)
-        .order("created_at", { ascending: false })
-        .limit(3);
+      const { data, error } = await getDocuments('projects', [
+        where('published', '==', true),
+        firestoreOrderBy('created_at', 'desc'),
+        firestoreLimit(3)
+      ]);
 
       if (data && data.length > 0) {
         // Use database projects if available
@@ -213,24 +213,23 @@ export default function Landing() {
         return;
       }
 
-      const { data: inquiry, error: dbError } = await supabase
-        .from("contact_inquiries")
-        .insert({
-          name: formData.name,
-          email: formData.email,
-          phone: formData.phone,
-          subject: formData.subject,
-          message: formData.message,
-        })
-        .select()
-        .single();
+      // Save inquiry to Firestore
+      const { createDocument } = await import('@/lib/firebase/firestore');
+      const { data: inquiryId, error: dbError } = await createDocument('contact_inquiries', {
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        subject: formData.subject,
+        message: formData.message,
+        created_at: new Date(),
+      });
 
       if (dbError) {
         console.error("Database error:", dbError);
         throw new Error("Failed to save inquiry to database");
       }
 
-      console.log("Inquiry saved to database:", inquiry.id);
+      console.log("Inquiry saved to database:", inquiryId);
 
       try {
         const response = await fetch("/api/send-contact-email", {

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { getDocuments, createDocument, updateDocument, deleteDocument, getDocument } from "@/lib/firebase/firestore";
+import { orderBy } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -104,13 +105,9 @@ export const TransactionManager = () => {
 
   const fetchTransactions = async () => {
     try {
-      const { data, error } = await supabase
-        .from("transactions" as any)
-        .select(`
-          *,
-          project_assignments!assignment_id(title)
-        `)
-        .order("transaction_date", { ascending: false });
+      const { data, error } = await getDocuments("transactions", [
+        orderBy("transaction_date", "desc")
+      ]);
 
       if (error) {
         console.log("Transactions feature not yet available:", error);
@@ -119,10 +116,20 @@ export const TransactionManager = () => {
         return;
       }
 
-      const transactionsWithAssignments = (data || []).map((transaction: any) => ({
-        ...transaction,
-        assignment_title: transaction.project_assignments?.title || null
-      }));
+      // Enrich with assignment titles
+      const transactionsWithAssignments = await Promise.all(
+        (data || []).map(async (transaction: any) => {
+          let assignment_title = null;
+          if (transaction.assignment_id) {
+            const { data: assignment } = await getDocument("assignments", transaction.assignment_id);
+            assignment_title = assignment?.title || null;
+          }
+          return {
+            ...transaction,
+            assignment_title
+          };
+        })
+      );
 
       setTransactions(transactionsWithAssignments);
     } catch (error: any) {
@@ -135,13 +142,14 @@ export const TransactionManager = () => {
 
   const fetchAssignments = async () => {
     try {
-      const { data, error } = await (supabase as any)
-        .from("project_assignments")
-        .select("id, title")
-        .order("title");
+      const { data, error } = await getDocuments("assignments");
 
       if (!error && data) {
-        setAssignments(data);
+        // Sort by title in JavaScript
+        const sortedAssignments = data.sort((a: any, b: any) => 
+          (a.title || '').localeCompare(b.title || '')
+        );
+        setAssignments(sortedAssignments.map((a: any) => ({ id: a.id, title: a.title })));
       }
     } catch (error) {
       console.log("Could not fetch assignments:", error);
@@ -219,10 +227,10 @@ export const TransactionManager = () => {
       console.log("Submitting transaction data:", transactionData);
 
       if (editingTransaction) {
-        const { error } = await (supabase as any)
-          .from("transactions")
-          .update(transactionData)
-          .eq("id", editingTransaction.id);
+        const { error } = await updateDocument("transactions", editingTransaction.id, {
+          ...transactionData,
+          updated_at: new Date().toISOString()
+        });
 
         if (error) {
           console.error("Update error:", error);
@@ -234,10 +242,11 @@ export const TransactionManager = () => {
           description: "Transaction updated successfully",
         });
       } else {
-        const { data, error } = await (supabase as any)
-          .from("transactions")
-          .insert([transactionData])
-          .select();
+        const { data, error } = await createDocument("transactions", {
+          ...transactionData,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        });
 
         if (error) {
           console.error("Insert error:", error);
@@ -269,10 +278,7 @@ export const TransactionManager = () => {
     if (!transactionToDelete) return;
 
     try {
-      const { error } = await (supabase as any)
-        .from("transactions")
-        .delete()
-        .eq("id", transactionToDelete);
+      const { error } = await deleteDocument("transactions", transactionToDelete);
 
       if (error) throw error;
 

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { getDocuments, deleteDocument, getDocument } from "@/lib/firebase/firestore";
+import { where, orderBy } from "firebase/firestore";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -39,37 +40,47 @@ const EmployeeList = ({ onUpdate }: EmployeeListProps) => {
   const fetchEmployees = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from("employees")
-        .select(`
-          *,
-          departments!employees_department_id_fkey(name),
-          designations(name)
-        `)
-        .order("created_at", { ascending: false });
+      
+      // Fetch employees sorted by creation date
+      const { data, error } = await getDocuments("employees", [
+        orderBy("created_at", "desc")
+      ]);
 
       if (error) {
         console.error("Error fetching employees:", error);
         toast({
           title: "Error loading employees",
-          description: error.message,
+          description: error.message || "Failed to load employees",
           variant: "destructive",
         });
-        throw error;
+        setEmployees([]);
+        return;
       }
 
       // Fetch roles for each employee
-      if (data) {
+      if (data && data.length > 0) {
         const employeesWithRoles = await Promise.all(
           data.map(async (emp) => {
-            const { data: roleData } = await supabase
-              .from("user_roles")
-              .select("role")
-              .eq("user_id", emp.user_id);
+            // Find the user document to get auth_uid
+            const { data: users } = await getDocuments("users", [
+              where("employee_id", "==", emp.id)
+            ]);
+            
+            const authUid = users?.[0]?.auth_uid;
+            
+            // Fetch role using auth_uid
+            let roles: string[] = [];
+            if (authUid) {
+              const { data: roleDoc } = await getDocument("user_roles", authUid);
+              if (roleDoc) {
+                roles = [roleDoc.role];
+              }
+            }
             
             return {
               ...emp,
-              roles: roleData?.map(r => r.role) || []
+              user_id: authUid, // For compatibility
+              roles
             };
           })
         );
@@ -77,10 +88,14 @@ const EmployeeList = ({ onUpdate }: EmployeeListProps) => {
       } else {
         setEmployees([]);
       }
-      return;
 
     } catch (error: any) {
       console.error("Error fetching employees:", error);
+      toast({
+        title: "Error loading employees",
+        description: "Failed to load employees",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -91,24 +106,24 @@ const EmployeeList = ({ onUpdate }: EmployeeListProps) => {
     
     setActionLoading(true);
     try {
-      // Delete employee record (this will cascade delete related records)
-      const { error: empError } = await supabase
-        .from("employees")
-        .delete()
-        .eq("id", selectedEmployee.id);
+      // In Firebase, we'll soft delete by setting status to 'inactive'
+      // Hard deletes require admin API
+      const response = await fetch('/api/delete-employee', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          employeeId: selectedEmployee.id,
+          authUid: selectedEmployee.user_id 
+        }),
+      });
 
-      if (empError) throw empError;
+      const result = await response.json();
 
-      // Delete user roles
-      const { error: roleError } = await supabase
-        .from("user_roles")
-        .delete()
-        .eq("user_id", selectedEmployee.user_id);
-
-      if (roleError) throw roleError;
-
-      // Note: We can't delete from auth.users directly via client
-      // The user account will remain but won't be able to access the system
+      if (!response.ok) {
+        throw new Error(result.message || 'Failed to delete employee');
+      }
 
       toast({
         title: "Employee deleted",
@@ -135,34 +150,33 @@ const EmployeeList = ({ onUpdate }: EmployeeListProps) => {
     try {
       const isAdmin = employee.roles?.includes('admin');
       
+      // Call API to toggle admin role
+      const response = await fetch('/api/toggle-admin-role', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          authUid: employee.user_id,
+          isAdmin: !isAdmin,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || 'Failed to update role');
+      }
+
       if (isAdmin) {
-        // Remove admin role
-        const { error } = await supabase
-          .from("user_roles")
-          .delete()
-          .eq("user_id", employee.user_id)
-          .eq("role", "admin");
-
-        if (error) throw error;
-
         toast({
           title: "Admin access revoked",
-          description: `${employee.first_name} ${employee.last_name} is no longer an admin.`,
+          description: `${employee.name} is no longer an admin.`,
         });
       } else {
-        // Grant admin role
-        const { error } = await supabase
-          .from("user_roles")
-          .insert({
-            user_id: employee.user_id,
-            role: "admin"
-          });
-
-        if (error) throw error;
-
         toast({
           title: "Admin access granted",
-          description: `${employee.first_name} ${employee.last_name} is now an admin.`,
+          description: `${employee.name} is now an admin.`,
         });
       }
 
@@ -228,7 +242,7 @@ const EmployeeList = ({ onUpdate }: EmployeeListProps) => {
             return (
               <TableRow key={employee.id}>
                 <TableCell className="font-medium">
-                  {employee.first_name} {employee.last_name}
+                  {employee.name}
                 </TableCell>
                 <TableCell>
                   {employee.eid ? (
@@ -238,8 +252,8 @@ const EmployeeList = ({ onUpdate }: EmployeeListProps) => {
                   )}
                 </TableCell>
                 <TableCell>{employee.email}</TableCell>
-                <TableCell>{employee.departments?.name || "N/A"}</TableCell>
-                <TableCell>{employee.designations?.name || "N/A"}</TableCell>
+                <TableCell>{employee.department || "N/A"}</TableCell>
+                <TableCell>{employee.designation || "N/A"}</TableCell>
                 <TableCell>
                   <div className="flex gap-1">
                     <Badge variant="outline">
@@ -253,11 +267,11 @@ const EmployeeList = ({ onUpdate }: EmployeeListProps) => {
                   </div>
                 </TableCell>
                 <TableCell>
-                  <Badge variant={employee.employment_status === "Active" ? "default" : "secondary"}>
-                    {employee.employment_status}
+                  <Badge variant={employee.status === "active" ? "default" : "secondary"}>
+                    {employee.status}
                   </Badge>
                 </TableCell>
-                <TableCell>{new Date(employee.joining_date).toLocaleDateString()}</TableCell>
+                <TableCell>{employee.joining_date ? new Date(employee.joining_date).toLocaleDateString() : "N/A"}</TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2 flex-wrap">
                     <Button

@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Users, UserPlus, Calendar, LogOut, Briefcase, ClipboardList, Globe, DollarSign, Menu, X } from "lucide-react";
 import AddEmployeeForm from "@/components/admin/AddEmployeeForm";
@@ -41,34 +40,45 @@ export default function AdminDashboard() {
 
   const fetchStats = async () => {
     try {
-      const { count: employeesCount } = await supabase
-        .from("employees")
-        .select("*", { count: "exact", head: true });
+      // Import Firebase functions dynamically to avoid server-side issues
+      const { getDocuments } = await import("@/lib/firebase/firestore");
+      const { where } = await import("firebase/firestore");
 
-      const { count: activeCount } = await supabase
-        .from("employees")
-        .select("*", { count: "exact", head: true })
-        .eq("employment_status", "Active" as any);
+      // Fetch all employees
+      const { data: allEmployees } = await getDocuments("employees");
+      const totalEmployees = allEmployees?.length || 0;
 
-      const { count: pendingCount } = await supabase
-        .from("attendance")
-        .select("*", { count: "exact", head: true })
-        .eq("status", "Leave" as any)
-        .eq("admin_approved", false);
+      // Count active employees
+      const { data: activeEmps } = await getDocuments("employees", [
+        where("status", "==", "active")
+      ]);
+      const activeEmployees = activeEmps?.length || 0;
 
-      // Get applications count (will work after migration is run)
-      const { count: applicationsCount } = await supabase
-        .from("job_applications" as any)
-        .select("*", { count: "exact", head: true });
+      // Fetch pending leave requests
+      const { data: pendingLeavesData } = await getDocuments("leave_requests", [
+        where("status", "==", "pending")
+      ]);
+      const pendingLeaves = pendingLeavesData?.length || 0;
+
+      // Fetch job applications
+      const { data: applicationsData } = await getDocuments("job_applications");
+      const totalApplications = applicationsData?.length || 0;
 
       setStats({
-        totalEmployees: employeesCount || 0,
-        activeEmployees: activeCount || 0,
-        pendingLeaves: pendingCount || 0,
-        totalApplications: applicationsCount || 0,
+        totalEmployees,
+        activeEmployees,
+        pendingLeaves,
+        totalApplications,
       });
     } catch (error) {
       console.error("Error fetching stats:", error);
+      // Keep default values on error
+      setStats({
+        totalEmployees: 0,
+        activeEmployees: 0,
+        pendingLeaves: 0,
+        totalApplications: 0,
+      });
     }
   };
 
@@ -78,12 +88,16 @@ export default function AdminDashboard() {
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    toast({
-      title: "Logged out",
-      description: "You have been successfully logged out.",
-    });
-    router.push("/login");
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      toast({
+        title: "Logged out",
+        description: "You have been successfully logged out.",
+      });
+      router.push("/login");
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
   };
 
   return (

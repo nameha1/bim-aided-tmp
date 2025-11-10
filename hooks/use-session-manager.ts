@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { onAuthStateChanged, signOut } from '@/lib/firebase/auth';
 import { useRouter, usePathname } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-import { refreshSessionIfNeeded } from '@/lib/supabase-helpers';
+import { refreshSessionIfNeeded } from '@/lib/firebase-helpers';
 
 export const useSessionManager = () => {
   const router = useRouter();
@@ -13,27 +13,24 @@ export const useSessionManager = () => {
 
   useEffect(() => {
     // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('Auth event:', event, 'Session:', !!session);
+    const unsubscribe = onAuthStateChanged(async (user) => {
+      console.log('Auth state changed:', !!user);
 
-        if (event === 'SIGNED_OUT') {
-          // Clear any cached data
-          localStorage.removeItem('userRole');
-          hasShownToast.current = false;
+      if (!user) {
+        // Clear any cached data
+        localStorage.removeItem('userRole');
+        hasShownToast.current = false;
+        
+        const currentPath = pathname;
+        const isProtectedRoute = currentPath.includes('/admin') || currentPath.includes('/employee');
+        
+        if (isProtectedRoute && !isInitialMount.current) {
           router.push('/login');
         }
-
-        if (event === 'TOKEN_REFRESHED') {
-          console.log('Token refreshed successfully');
-          hasShownToast.current = false;
-        }
-
-        if (event === 'USER_UPDATED') {
-          console.log('User updated');
-        }
       }
-    );
+      
+      isInitialMount.current = false;
+    });
 
     // Check session on mount - only for protected routes
     const checkSession = async () => {
@@ -48,28 +45,13 @@ export const useSessionManager = () => {
 
       // Give ProtectedRoute component time to do its own check first
       await new Promise(resolve => setTimeout(resolve, 100));
-
-      const { data: { session }, error } = await supabase.auth.getSession();
-      
-      if (error) {
-        console.error('Session manager - Session check error:', error);
-        // Don't navigate here, let ProtectedRoute handle it
-        isInitialMount.current = false;
-        return;
-      }
-
-      if (!session && isProtectedRoute && !isInitialMount.current) {
-        console.log('Session manager - No session on protected route');
-        // Only navigate if this is not the initial mount
-        // Let ProtectedRoute handle initial mount
-      }
       
       isInitialMount.current = false;
     };
 
     checkSession();
 
-    // Set up periodic session refresh (every 4 minutes)
+    // Set up periodic session refresh (every 50 minutes, Firebase tokens expire after 1 hour)
     const refreshInterval = setInterval(async () => {
       const success = await refreshSessionIfNeeded();
       if (!success) {
@@ -86,7 +68,7 @@ export const useSessionManager = () => {
           router.push('/login');
         }
       }
-    }, 4 * 60 * 1000); // 4 minutes
+    }, 50 * 60 * 1000); // 50 minutes
 
     // Refresh on user activity
     const handleActivity = () => {
@@ -98,7 +80,7 @@ export const useSessionManager = () => {
 
     // Cleanup
     return () => {
-      subscription.unsubscribe();
+      unsubscribe();
       clearInterval(refreshInterval);
       window.removeEventListener('click', handleActivity);
       window.removeEventListener('keypress', handleActivity);

@@ -1,67 +1,78 @@
-import { createClient } from '@supabase/supabase-js';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { uploadFile } from '@/lib/storage/minio';
 
-// Initialize Supabase Admin Client for storage
-if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {
-  throw new Error('Supabase credentials not found in environment variables');
-}
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  }
-);
-
-export async function POST(req: Request) {
+/**
+ * POST /api/upload-image
+ * Upload image to MinIO storage
+ * Accepts multipart/form-data with 'file' field
+ */
+export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
     const file = formData.get('file') as File;
-    const bucket = formData.get('bucket') as string || 'project-images';
-    const path = formData.get('path') as string || '';
+    const folder = formData.get('folder') as string || 'public/uploads';
 
     if (!file) {
-      return NextResponse.json({ error: 'No file provided' }, { status: 400 });
+      return NextResponse.json(
+        { success: false, message: 'No file provided' },
+        { status: 400 }
+      );
     }
 
-    const fileName = `${path}${Date.now()}-${file.name}`;
-
-    // Upload using admin client (bypasses RLS)
-    const { data, error } = await supabaseAdmin.storage
-      .from(bucket)
-      .upload(fileName, file, {
-        cacheControl: '3600',
-        upsert: false,
-      });
-
-    if (error) {
-      console.error('Upload error:', error);
-      return NextResponse.json({ 
-        error: 'Upload failed', 
-        message: error.message 
-      }, { status: 400 });
+    // Validate file type (images only)
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      return NextResponse.json(
+        { success: false, message: 'Invalid file type. Only images are allowed.' },
+        { status: 400 }
+      );
     }
 
-    // Get public URL
-    const { data: urlData } = supabaseAdmin.storage
-      .from(bucket)
-      .getPublicUrl(data.path);
+    // Validate file size (max 5MB)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      return NextResponse.json(
+        { success: false, message: 'File too large. Maximum size is 5MB.' },
+        { status: 400 }
+      );
+    }
 
-    return NextResponse.json({ 
-      success: true, 
-      url: urlData.publicUrl,
-      path: data.path
+    // Generate unique filename
+    const timestamp = Date.now();
+    const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const fileName = `${timestamp}-${sanitizedName}`;
+    const filePath = `${folder}/${fileName}`;
+
+    // Upload to MinIO
+    const { data, error } = await uploadFile(filePath, file, {
+      'Content-Type': file.type,
+      'Content-Disposition': `inline; filename="${sanitizedName}"`,
     });
 
+    if (error) {
+      console.error('MinIO upload error:', error);
+      return NextResponse.json(
+        { success: false, message: 'Failed to upload file', error: error.message },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'File uploaded successfully',
+      data: {
+        url: data?.url,
+        path: data?.path,
+        fileName: sanitizedName,
+        size: file.size,
+        type: file.type,
+      },
+    });
   } catch (error: any) {
-    console.error('Server error:', error);
-    return NextResponse.json({ 
-      error: 'Internal server error', 
-      message: error.message 
-    }, { status: 500 });
+    console.error('Upload error:', error);
+    return NextResponse.json(
+      { success: false, message: 'Failed to upload file', error: error.message },
+      { status: 500 }
+    );
   }
 }

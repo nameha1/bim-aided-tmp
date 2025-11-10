@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/integrations/supabase/client";
-import { User } from "@supabase/supabase-js";
+import { onAuthStateChanged, getCurrentUser } from "@/lib/firebase/auth";
+import { User } from "firebase/auth";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -32,45 +32,32 @@ const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
     const checkAuth = async () => {
       try {
         console.log("Checking authentication...");
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        const currentUser = getCurrentUser();
         
-        console.log("Session check result:", { hasSession: !!session, error: sessionError });
+        console.log("Session check result:", { hasUser: !!currentUser });
         
         if (!isMounted) return;
 
-        if (sessionError) {
-          console.error("Session error:", sessionError);
-          setUser(null);
-          setUserRole(null);
-          setLoading(false);
-          setAuthChecked(true);
-          clearTimeout(timeout);
-          return;
-        }
-
-        if (session?.user) {
+        if (currentUser) {
           console.log("User found, fetching role...");
-          setUser(session.user);
+          setUser(currentUser);
 
-          // Get user role
-          const { data: roleData, error: roleError } = await supabase
-            .from("user_roles")
-            .select("role")
-            .eq("user_id", session.user.id)
-            .single();
+          // Get user role from API
+          const roleResponse = await fetch(`/api/user-roles/${currentUser.uid}`);
+          const roleData = await roleResponse.json();
 
-          console.log("Role fetch result:", { role: roleData?.role, error: roleError });
+          console.log("Role fetch result:", { role: roleData?.role, error: roleData?.error });
 
           if (!isMounted) return;
 
-          if (roleError) {
-            console.error("Error fetching role:", roleError);
+          if (roleData.error) {
+            console.error("Error fetching role:", roleData.error);
             setUserRole(null);
           } else {
             setUserRole(roleData?.role || null);
           }
         } else {
-          console.log("No session found");
+          console.log("No user found");
           setUser(null);
           setUserRole(null);
         }
@@ -94,29 +81,27 @@ const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
 
     checkAuth();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("Auth state changed:", event, "Has session:", !!session);
+    // Listen to auth state changes
+    const unsubscribe = onAuthStateChanged(async (currentUser) => {
+      console.log("Auth state changed:", "Has user:", !!currentUser);
       
       if (!isMounted) return;
 
-      if (session?.user) {
-        setUser(session.user);
+      if (currentUser) {
+        setUser(currentUser);
         setAuthChecked(true);
         // Fetch role when auth state changes
         try {
-          const { data, error } = await supabase
-            .from("user_roles")
-            .select("role")
-            .eq("user_id", session.user.id)
-            .single();
+          const roleResponse = await fetch(`/api/user-roles/${currentUser.uid}`);
+          const roleData = await roleResponse.json();
           
           if (!isMounted) return;
 
-          if (error) {
-            console.error("Error fetching role:", error);
+          if (roleData.error) {
+            console.error("Error fetching role:", roleData.error);
             setUserRole(null);
           } else {
-            setUserRole(data?.role || null);
+            setUserRole(roleData?.role || null);
           }
         } catch (error) {
           console.error("Error fetching role:", error);
@@ -134,7 +119,7 @@ const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
     return () => {
       isMounted = false;
       clearTimeout(timeout);
-      subscription.unsubscribe();
+      unsubscribe();
     };
   }, []);
 

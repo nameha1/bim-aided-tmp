@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { supabase } from "@/integrations/supabase/client";
+// TODO: Migrate to Firebase
+import { supabase } from "@/lib/supabase-stub";
 import { useToast } from "@/hooks/use-toast";
 import { Clock, LogIn, LogOut, MapPin, Calendar } from "lucide-react";
 import { format } from "date-fns";

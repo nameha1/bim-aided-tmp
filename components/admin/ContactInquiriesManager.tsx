@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { getDocuments, updateDocument } from "@/lib/firebase/firestore";
+import { where, orderBy } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import {
   Table,
@@ -66,9 +67,7 @@ const ContactInquiriesManager = () => {
 
   const fetchEmployees = async () => {
     try {
-      const { data, error }: any = await supabase
-        .from("employees")
-        .select("id, first_name, last_name");
+      const { data, error } = await getDocuments("employees");
 
       if (error) throw error;
       setEmployees(data || []);
@@ -80,22 +79,34 @@ const ContactInquiriesManager = () => {
   const fetchInquiries = async () => {
     try {
       setLoading(true);
-      let query = supabase
-        .from("contact_inquiries")
-        .select(`
-          *,
-          employees:assigned_to(first_name, last_name)
-        `)
-        .order("created_at", { ascending: false });
-
+      
+      // Build query with filters
+      const filters: any[] = [orderBy("created_at", "desc")];
       if (statusFilter !== "all") {
-        query = query.eq("status", statusFilter);
+        filters.push(where("status", "==", statusFilter));
       }
 
-      const { data, error } = await query;
+      const { data, error } = await getDocuments("contact_inquiries", filters);
 
       if (error) throw error;
-      setInquiries(data || []);
+      
+      // Enrich with employee data if assigned
+      const enrichedData = await Promise.all(
+        (data || []).map(async (inquiry: any) => {
+          if (inquiry.assigned_to) {
+            const { data: employeeData } = await getDocuments("employees", [
+              where("id", "==", inquiry.assigned_to)
+            ]);
+            return {
+              ...inquiry,
+              employees: employeeData?.[0] || null
+            };
+          }
+          return inquiry;
+        })
+      );
+
+      setInquiries(enrichedData);
     } catch (error) {
       console.error("Error fetching inquiries:", error);
       toast({
@@ -116,13 +127,10 @@ const ContactInquiriesManager = () => {
 
   const handleStatusChange = async (inquiryId: string, newStatus: string) => {
     try {
-      const { error } = await supabase
-        .from("contact_inquiries")
-        .update({ 
-          status: newStatus,
-          updated_at: new Date().toISOString()
-        })
-        .eq("id", inquiryId);
+      const { error } = await updateDocument("contact_inquiries", inquiryId, { 
+        status: newStatus,
+        updated_at: new Date().toISOString()
+      });
 
       if (error) throw error;
 
@@ -144,13 +152,10 @@ const ContactInquiriesManager = () => {
 
   const handleAssignTo = async (inquiryId: string, userId: string) => {
     try {
-      const { error } = await supabase
-        .from("contact_inquiries")
-        .update({ 
-          assigned_to: userId,
-          updated_at: new Date().toISOString()
-        })
-        .eq("id", inquiryId);
+      const { error } = await updateDocument("contact_inquiries", inquiryId, { 
+        assigned_to: userId,
+        updated_at: new Date().toISOString()
+      });
 
       if (error) throw error;
 
@@ -174,13 +179,10 @@ const ContactInquiriesManager = () => {
     if (!selectedInquiry) return;
 
     try {
-      const { error } = await supabase
-        .from("contact_inquiries")
-        .update({ 
-          admin_notes: adminNotes,
-          updated_at: new Date().toISOString()
-        })
-        .eq("id", selectedInquiry.id);
+      const { error } = await updateDocument("contact_inquiries", selectedInquiry.id, { 
+        admin_notes: adminNotes,
+        updated_at: new Date().toISOString()
+      });
 
       if (error) throw error;
 

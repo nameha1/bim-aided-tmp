@@ -1,27 +1,11 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
-
-// Initialize Supabase Admin Client
-if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {
-  throw new Error('Supabase credentials not found in environment variables');
-}
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  }
-);
+import { createDocument } from '@/lib/firebase/firestore';
 
 export async function POST(req: Request) {
   try {
     const projectData = await req.json();
 
-    // Validate required fields (title is the actual field name in the database)
+    // Validate required fields
     if (!projectData.title) {
       return NextResponse.json({ 
         error: 'Project title is required',
@@ -29,22 +13,27 @@ export async function POST(req: Request) {
       }, { status: 400 });
     }
 
-    const { data, error } = await supabaseAdmin
-      .from('projects')
-      .insert(projectData)
-      .select()
-      .single();
+    // Add created_at timestamp
+    const projectWithTimestamp = {
+      ...projectData,
+      created_at: new Date(),
+    };
+
+    const { data: projectId, error } = await createDocument('projects', projectWithTimestamp);
 
     if (error) {
       console.error('Database error:', error);
       return NextResponse.json({ 
         error: 'Failed to create project', 
-        message: error.message,
-        details: error 
+        message: error.message
       }, { status: 400 });
     }
 
-    return NextResponse.json({ success: true, message: 'Project created successfully.', project: data });
+    return NextResponse.json({ 
+      success: true, 
+      message: 'Project created successfully.', 
+      project: { id: projectId, ...projectWithTimestamp } 
+    });
 
   } catch (error: any) {
     console.error('Server error:', error);

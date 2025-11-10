@@ -6,7 +6,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { supabase } from "@/integrations/supabase/client";
+import { getDocuments, updateDocument, createDocument } from "@/lib/firebase/firestore";
+import { where } from "firebase/firestore";
+import { auth } from "@/lib/firebase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Download, Check, X, RefreshCw, DollarSign, Settings } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -190,44 +192,53 @@ const PayrollManager = () => {
   }, [selectedMonth, selectedYear]);
 
   const fetchCurrentUser = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const { data: employee } = await supabase
-        .from('employees')
-        .select('id')
-        .eq('email', user.email)
-        .single();
-      setCurrentUser(employee);
+    try {
+      // Get session from API instead of client auth
+      const sessionRes = await fetch('/api/auth/session');
+      const sessionData = await sessionRes.json();
+
+      if (sessionData.user && sessionData.user.email) {
+        const { data: employees } = await getDocuments('employees', [
+          where('email', '==', sessionData.user.email)
+        ]);
+        if (employees && employees.length > 0) {
+          setCurrentUser(employees[0]);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching current user:', error);
     }
   };
 
   const fetchPayrollData = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('monthly_payroll' as any)
-        .select(`
-          *,
-          employees (
-            id,
-            first_name,
-            last_name,
-            eid,
-            designations (name),
-            departments (name)
-          ),
-          salary_deductions (*)
-        `)
-        .eq('month', parseInt(selectedMonth))
-        .eq('year', parseInt(selectedYear))
-        .order('created_at', { ascending: false });
+      const { data, error } = await getDocuments('payroll', [
+        where('month', '==', parseInt(selectedMonth)),
+        where('year', '==', parseInt(selectedYear))
+      ]);
 
       if (error) throw error;
-      setPayrollData(data || []);
+
+      // Enrich with employee details
+      const enrichedData = await Promise.all(
+        (data || []).map(async (payroll: any) => {
+          const { data: employee } = await getDocuments('employees', [
+            where('id', '==', payroll.employee_id)
+          ]);
+          
+          return {
+            ...payroll,
+            employee: employee?.[0] || null
+          };
+        })
+      );
+
+      setPayrollData(enrichedData || []);
     } catch (error: any) {
       toast({
         title: "Error loading payroll",
-        description: error.message,
+        description: error.message || "Failed to load payroll data",
         variant: "destructive",
       });
     } finally {
@@ -237,9 +248,7 @@ const PayrollManager = () => {
 
   const fetchSalaryConfig = async () => {
     try {
-      const { data, error } = await supabase
-        .from('salary_configuration' as any)
-        .select('*');
+      const { data, error } = await getDocuments('payroll_settings');
 
       if (error) throw error;
 
@@ -251,22 +260,45 @@ const PayrollManager = () => {
       setSalaryConfig(configMap);
     } catch (error: any) {
       console.error("Error loading salary config:", error);
+      // Set default config if none exists
+      setSalaryConfig({
+        annual_casual_leave: '10',
+        annual_sick_leave: '10',
+        late_tolerance_count: '3',
+        working_days_per_month: '30',
+        half_day_hours: '4',
+        full_day_hours: '8'
+      });
     }
   };
 
   const updateSalaryConfig = async (updates: Record<string, string>) => {
     setConfigLoading(true);
     try {
-      const configUpdates = Object.entries(updates).map(([key, value]) => ({
-        config_key: key,
-        config_value: value
-      }));
+      // Update each config as a separate document
+      const promises = Object.entries(updates).map(async ([key, value]) => {
+        const { data: existing } = await getDocuments('payroll_settings', [
+          where('config_key', '==', key)
+        ]);
 
-      const { error } = await supabase
-        .from('salary_configuration' as any)
-        .upsert(configUpdates, { onConflict: 'config_key' });
+        if (existing && existing.length > 0) {
+          // Update existing
+          return updateDocument('payroll_settings', existing[0].id, {
+            config_value: value,
+            updated_at: new Date().toISOString()
+          });
+        } else {
+          // Create new
+          return createDocument('payroll_settings', {
+            config_key: key,
+            config_value: value,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          });
+        }
+      });
 
-      if (error) throw error;
+      await Promise.all(promises);
 
       toast({
         title: "Settings updated",
@@ -278,7 +310,7 @@ const PayrollManager = () => {
     } catch (error: any) {
       toast({
         title: "Error updating settings",
-        description: error.message,
+        description: error.message || "Failed to update settings",
         variant: "destructive",
       });
     } finally {
@@ -379,17 +411,17 @@ const PayrollManager = () => {
     ];
 
     const rows = payrollData.map(p => [
-      p.employees?.eid || '-',
-      `${p.employees?.first_name} ${p.employees?.last_name}`,
-      p.employees?.designations?.name || '-',
+      p.employee?.eid || '-',
+      p.employee?.name || '-',
+      p.employee?.designation || '-',
       p.basic_salary,
       p.total_present_days,
       p.total_absent_days,
       p.total_late_days,
-      p.casual_leave_taken,
-      p.sick_leave_taken,
+      p.casual_leave_taken || 0,
+      p.sick_leave_taken || 0,
       p.unpaid_leave_days,
-      p.late_penalty_days,
+      p.late_penalty_days || 0,
       p.total_deduction,
       p.net_payable_salary,
       p.status
@@ -578,19 +610,19 @@ const PayrollManager = () => {
                       <TableCell>
                         <div>
                           <div className="font-medium">
-                            {payroll.employees?.first_name} {payroll.employees?.last_name}
+                            {payroll.employee?.name || '-'}
                           </div>
                           <div className="text-sm text-muted-foreground">
-                            {payroll.employees?.eid}
+                            {payroll.employee?.eid || '-'}
                           </div>
                         </div>
                       </TableCell>
                       <TableCell>
                         <div className="text-sm">
-                          {payroll.employees?.designations?.name || '-'}
+                          {payroll.employee?.designation || '-'}
                         </div>
                         <div className="text-xs text-muted-foreground">
-                          {payroll.employees?.departments?.name || '-'}
+                          {payroll.employee?.department || '-'}
                         </div>
                       </TableCell>
                       <TableCell className="text-right font-medium">

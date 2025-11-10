@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { getDocuments, createDocument, updateDocument, deleteDocument, getDocument } from "@/lib/firebase/firestore";
+import { orderBy } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -105,13 +106,9 @@ export const InvoiceManager = ({ onInvoiceConverted }: InvoiceManagerProps) => {
 
   const fetchInvoices = async () => {
     try {
-      const { data, error } = await (supabase as any)
-        .from("invoices")
-        .select(`
-          *,
-          project_assignments!assignment_id(title)
-        `)
-        .order("due_date", { ascending: true });
+      const { data, error } = await getDocuments("invoices", [
+        orderBy("due_date", "asc")
+      ]);
 
       if (error) {
         console.log("Invoices feature not yet available:", error);
@@ -120,10 +117,20 @@ export const InvoiceManager = ({ onInvoiceConverted }: InvoiceManagerProps) => {
         return;
       }
 
-      const invoicesWithAssignments = (data || []).map((invoice: any) => ({
-        ...invoice,
-        assignment_title: invoice.project_assignments?.title || null
-      }));
+      // Enrich with assignment titles
+      const invoicesWithAssignments = await Promise.all(
+        (data || []).map(async (invoice: any) => {
+          let assignment_title = null;
+          if (invoice.assignment_id) {
+            const { data: assignment } = await getDocument("assignments", invoice.assignment_id);
+            assignment_title = assignment?.title || null;
+          }
+          return {
+            ...invoice,
+            assignment_title
+          };
+        })
+      );
 
       // Update overdue status
       const today = new Date().toISOString().split('T')[0];
@@ -144,13 +151,14 @@ export const InvoiceManager = ({ onInvoiceConverted }: InvoiceManagerProps) => {
 
   const fetchAssignments = async () => {
     try {
-      const { data, error } = await (supabase as any)
-        .from("project_assignments")
-        .select("id, title")
-        .order("title");
+      const { data, error } = await getDocuments("assignments");
 
       if (!error && data) {
-        setAssignments(data);
+        // Sort by title in JavaScript
+        const sortedAssignments = data.sort((a: any, b: any) => 
+          (a.title || '').localeCompare(b.title || '')
+        );
+        setAssignments(sortedAssignments.map((a: any) => ({ id: a.id, title: a.title })));
       }
     } catch (error) {
       console.log("Could not fetch assignments:", error);
@@ -158,10 +166,10 @@ export const InvoiceManager = ({ onInvoiceConverted }: InvoiceManagerProps) => {
   };
 
   const updateInvoiceStatus = async (invoiceId: string, status: string) => {
-    await (supabase as any)
-      .from("invoices")
-      .update({ status, updated_at: new Date().toISOString() })
-      .eq("id", invoiceId);
+    await updateDocument("invoices", invoiceId, {
+      status,
+      updated_at: new Date().toISOString()
+    });
   };
 
   const resetForm = () => {
@@ -216,10 +224,10 @@ export const InvoiceManager = ({ onInvoiceConverted }: InvoiceManagerProps) => {
       };
 
       if (editingInvoice) {
-        const { error } = await (supabase as any)
-          .from("invoices")
-          .update(invoiceData)
-          .eq("id", editingInvoice.id);
+        const { error } = await updateDocument("invoices", editingInvoice.id, {
+          ...invoiceData,
+          updated_at: new Date().toISOString()
+        });
 
         if (error) throw error;
 
@@ -228,9 +236,11 @@ export const InvoiceManager = ({ onInvoiceConverted }: InvoiceManagerProps) => {
           description: "Invoice updated successfully",
         });
       } else {
-        const { error } = await (supabase as any)
-          .from("invoices")
-          .insert([invoiceData]);
+        const { error } = await createDocument("invoices", {
+          ...invoiceData,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        });
 
         if (error) throw error;
 
@@ -267,24 +277,23 @@ export const InvoiceManager = ({ onInvoiceConverted }: InvoiceManagerProps) => {
         notes: `Payment for invoice ${invoice.invoice_number || invoice.id}${invoice.notes ? ` - ${invoice.notes}` : ''}`,
       };
 
-      const { data: transactionResult, error: transactionError } = await (supabase as any)
-        .from("transactions")
-        .insert([transactionData])
-        .select();
+      const { data: transactionResult, error: transactionError } = await createDocument("transactions", {
+        ...transactionData,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      });
 
       if (transactionError) throw transactionError;
 
       // Update invoice status
       const newStatus = invoice.invoice_type === "receivable" ? "received" : "paid";
-      const { error: invoiceError } = await (supabase as any)
-        .from("invoices")
-        .update({
-          status: newStatus,
-          paid_date: today,
-          transaction_id: transactionResult[0].id,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", invoice.id);
+      const transactionId = typeof transactionResult === 'string' ? transactionResult : null;
+      const { error: invoiceError } = await updateDocument("invoices", invoice.id, {
+        status: newStatus,
+        paid_date: today,
+        transaction_id: transactionId,
+        updated_at: new Date().toISOString(),
+      });
 
       if (invoiceError) throw invoiceError;
 
@@ -308,10 +317,7 @@ export const InvoiceManager = ({ onInvoiceConverted }: InvoiceManagerProps) => {
     if (!invoiceToDelete) return;
 
     try {
-      const { error } = await (supabase as any)
-        .from("invoices")
-        .delete()
-        .eq("id", invoiceToDelete);
+      const { error } = await deleteDocument("invoices", invoiceToDelete);
 
       if (error) throw error;
 

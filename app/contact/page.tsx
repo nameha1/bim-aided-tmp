@@ -9,7 +9,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Mail, Phone, MapPin, Clock, Send } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
 import Link from "next/link";
 
 export default function Contact() {
@@ -121,25 +120,23 @@ export default function Contact() {
         return;
       }
 
-      // Step 1: Save to Supabase database
-      const { data: inquiry, error: dbError } = await supabase
-        .from("contact_inquiries")
-        .insert({
-          name: formData.name,
-          email: formData.email,
-          phone: formData.phone,
-          subject: formData.subject,
-          message: formData.message,
-        })
-        .select()
-        .single();
+      // Step 1: Save to Firestore database
+      const { createDocument } = await import('@/lib/firebase/firestore');
+      const { data: inquiryId, error: dbError } = await createDocument('contact_inquiries', {
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        subject: formData.subject,
+        message: formData.message,
+        created_at: new Date(),
+      });
 
       if (dbError) {
         console.error("Database error:", dbError);
         throw new Error("Failed to save inquiry to database");
       }
 
-      console.log("Inquiry saved to database:", inquiry.id);
+      console.log("Inquiry saved to database:", inquiryId);
 
       // Step 2: Send email notification
       try {

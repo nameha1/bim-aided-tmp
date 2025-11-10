@@ -19,7 +19,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { supabase } from "@/integrations/supabase/client";
+// TODO: Migrate to Firebase
+import { supabase } from "@/lib/supabase-stub";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Calendar as CalendarIcon } from "lucide-react";
 import { format } from "date-fns";

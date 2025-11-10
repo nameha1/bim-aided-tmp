@@ -6,7 +6,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { supabase } from "@/integrations/supabase/client";
+import { getDocuments, createDocument, updateDocument, deleteDocument } from "@/lib/firebase/firestore";
+import { orderBy } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -37,10 +38,9 @@ const CareerManager = () => {
 
   const fetchPostings = async () => {
     try {
-      const { data, error } = await (supabase as any)
-        .from("job_postings")
-        .select("*")
-        .order("created_at", { ascending: false });
+      const { data, error } = await getDocuments("job_postings", [
+        orderBy("created_at", "desc")
+      ]);
 
       if (error) throw error;
       setPostings(data || []);
@@ -50,7 +50,7 @@ const CareerManager = () => {
   };
 
   const fetchDepartments = async () => {
-    const { data } = await supabase.from("departments").select("*");
+    const { data } = await getDocuments("departments");
     setDepartments(data || []);
   };
 
@@ -85,10 +85,7 @@ const CareerManager = () => {
       } as any;
 
       if (editingPosting) {
-        const { error } = await (supabase as any)
-          .from("job_postings")
-          .update(postingData)
-          .eq("id", editingPosting.id);
+        const { error } = await updateDocument("job_postings", editingPosting.id, postingData);
 
         if (error) throw error;
 
@@ -97,7 +94,7 @@ const CareerManager = () => {
           description: "The posting has been updated successfully.",
         });
       } else {
-        const { error } = await (supabase as any).from("job_postings").insert(postingData);
+        const { error } = await createDocument("job_postings", postingData);
 
         if (error) throw error;
 
@@ -140,7 +137,7 @@ const CareerManager = () => {
     if (!confirm("Are you sure you want to delete this posting?")) return;
 
     try {
-      const { error } = await (supabase as any).from("job_postings").delete().eq("id", id);
+      const { error } = await deleteDocument("job_postings", id);
 
       if (error) throw error;
 

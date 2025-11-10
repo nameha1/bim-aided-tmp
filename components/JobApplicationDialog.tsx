@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Upload, X, FileText } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+// TODO: Migrate to Firebase
+import { supabase } from "@/lib/supabase-stub";
 
 interface JobApplicationDialogProps {
   isOpen: boolean;

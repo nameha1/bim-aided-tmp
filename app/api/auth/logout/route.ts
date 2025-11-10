@@ -1,24 +1,15 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { signOut } from '@/lib/firebase/auth';
 
 export async function POST() {
   try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY!;
-    
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    const { error } = await supabase.auth.signOut();
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
+    // Sign out from Firebase
+    await signOut();
 
     // Create response and clear cookies
     const response = NextResponse.json({ success: true });
     
-    response.cookies.delete('sb-access-token');
-    response.cookies.delete('sb-refresh-token');
+    response.cookies.delete('firebase-token');
 
     return response;
   } catch (error: any) {

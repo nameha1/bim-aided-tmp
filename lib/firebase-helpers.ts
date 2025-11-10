@@ -1,20 +1,19 @@
-import { supabase } from '@/integrations/supabase/client';
-import { PostgrestError } from '@supabase/supabase-js';
+import { getSession, refreshSession } from './firebase/auth';
 
-interface SupabaseResponse<T> {
+interface FirebaseResponse<T> {
   data: T | null;
-  error: PostgrestError | Error | null;
+  error: Error | null;
 }
 
 /**
- * Wrapper for Supabase operations that handles auth errors gracefully
+ * Wrapper for Firebase operations that handles auth errors gracefully
  */
-export async function executeSupabaseQuery<T>(
-  queryFn: () => Promise<{ data: T | null; error: PostgrestError | null }>
-): Promise<SupabaseResponse<T>> {
+export async function executeFirebaseQuery<T>(
+  queryFn: () => Promise<{ data: T | null; error: any }>
+): Promise<FirebaseResponse<T>> {
   try {
     // Check if session is valid
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    const { session, error: sessionError } = await getSession();
     
     if (sessionError) {
       console.error('Session error:', sessionError);
@@ -34,16 +33,16 @@ export async function executeSupabaseQuery<T>(
     // Execute the query
     const result = await queryFn();
     
-    // Handle specific Postgres errors
+    // Handle specific Firebase errors
     if (result.error) {
-      console.error('Supabase query error:', result.error);
+      console.error('Firebase query error:', result.error);
       
       // Check for auth-related errors
-      if (result.error.message?.includes('JWT') || 
+      if (result.error.message?.includes('auth') || 
           result.error.message?.includes('expired') ||
           result.error.message?.includes('invalid')) {
         // Try to refresh the session
-        const { error: refreshError } = await supabase.auth.refreshSession();
+        const { error: refreshError } = await refreshSession();
         if (refreshError) {
           return {
             data: null,
@@ -71,26 +70,20 @@ export async function executeSupabaseQuery<T>(
  */
 export async function refreshSessionIfNeeded(): Promise<boolean> {
   try {
-    const { data: { session } } = await supabase.auth.getSession();
+    const { session } = await getSession();
     
     if (!session) {
       return false;
     }
 
-    // Check if token is about to expire (within 5 minutes)
-    const expiresAt = session.expires_at;
-    if (expiresAt) {
-      const expiresIn = expiresAt - Math.floor(Date.now() / 1000);
-      if (expiresIn < 300) { // Less than 5 minutes
-        const { error } = await supabase.auth.refreshSession();
-        if (error) {
-          console.error('Failed to refresh session:', error);
-          return false;
-        }
-        console.log('Session refreshed successfully');
-      }
+    // Firebase tokens expire after 1 hour, refresh if needed
+    const { error } = await refreshSession();
+    if (error) {
+      console.error('Failed to refresh session:', error);
+      return false;
     }
     
+    console.log('Session refreshed successfully');
     return true;
   } catch (error) {
     console.error('Error checking/refreshing session:', error);

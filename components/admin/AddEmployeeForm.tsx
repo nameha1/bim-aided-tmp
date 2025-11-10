@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { supabase } from "@/integrations/supabase/client";
+import { getDocuments, createDocument, orderBy } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 
 interface AddEmployeeFormProps {
@@ -64,36 +64,41 @@ const AddEmployeeForm = ({ onSuccess }: AddEmployeeFormProps) => {
   };
 
   const fetchDepartments = async () => {
-    const { data, error } = await supabase.from("departments").select("*");
-    if (error) {
+    try {
+      const { data, error } = await getDocuments("departments", [orderBy("name", "asc")]);
+      if (error) throw error;
+      setDepartments(data || []);
+    } catch (error) {
       console.error("Error fetching departments:", error);
       throw error;
     }
-    setDepartments(data || []);
   };
 
   const fetchDesignations = async () => {
-    const { data, error } = await supabase
-      .from("designations")
-      .select("*, departments(name)")
-      .order("name");
-    if (error) {
+    try {
+      const { data, error } = await getDocuments("designations", [orderBy("title", "asc")]);
+      if (error) throw error;
+      setDesignations(data || []);
+    } catch (error) {
       console.error("Error fetching designations:", error);
       throw error;
     }
-    setDesignations(data || []);
   };
 
   const fetchEmployees = async () => {
-    const { data, error } = await supabase
-      .from("employees")
-      .select("id, first_name, last_name, designations(name)")
-      .eq("employment_status", "Active");
-    if (error) {
+    try {
+      // Fetch all employees without ordering to avoid index requirement
+      const { data, error } = await getDocuments("employees");
+      if (error) throw error;
+      // Filter active employees and sort in JavaScript
+      const activeEmployees = (data || [])
+        .filter((emp: any) => emp.status === "active")
+        .sort((a: any, b: any) => (a.name || '').localeCompare(b.name || ''));
+      setEmployees(activeEmployees);
+    } catch (error) {
       console.error("Error fetching employees:", error);
       throw error;
     }
-    setEmployees(data || []);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -202,26 +207,14 @@ const AddEmployeeForm = ({ onSuccess }: AddEmployeeFormProps) => {
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
           <h3 className="font-semibold text-yellow-800 mb-2">Setup Required</h3>
           <p className="text-yellow-700 mb-4">
-            Before adding employees, you need to set up departments and designations in your database.
+            Departments or designations are missing. Please run the setup script.
           </p>
           <div className="bg-white rounded p-3 text-sm">
-            <p className="font-medium mb-2">Run this SQL in your Supabase SQL Editor:</p>
-            <pre className="bg-gray-100 p-2 rounded text-xs overflow-x-auto">
-{`-- Add Departments
-INSERT INTO departments (name, description) VALUES 
-  ('Architecture', 'Architectural design and BIM modeling'),
-  ('Engineering', 'Structural and MEP engineering'),
-  ('VDC', 'Virtual Design and Construction'),
-  ('Human Resources', 'HR and administration'),
-  ('Management', 'Project and business management');
-
--- Add Designations (get department_id from departments table)
-INSERT INTO designations (name, level, department_id) VALUES 
-  ('BIM Manager', 'Senior', (SELECT id FROM departments WHERE name = 'Architecture' LIMIT 1)),
-  ('Senior Architect', 'Senior', (SELECT id FROM departments WHERE name = 'Architecture' LIMIT 1)),
-  ('BIM Modeler', 'Mid', (SELECT id FROM departments WHERE name = 'Architecture' LIMIT 1)),
-  ('Revit Technician', 'Junior', (SELECT id FROM departments WHERE name = 'Architecture' LIMIT 1));`}
-            </pre>
+            <p className="font-medium mb-2">Run this command in your terminal:</p>
+            <pre className="bg-gray-100 p-2 rounded text-xs overflow-x-auto">npm run setup-firestore</pre>
+            <p className="text-sm text-gray-600 mt-2">
+              This will create all necessary Firestore collections with sample data.
+            </p>
           </div>
           <Button
             type="button"
@@ -371,9 +364,8 @@ INSERT INTO designations (name, level, department_id) VALUES
             <SelectContent>
               {designations.map((desig) => (
                 <SelectItem key={desig.id} value={desig.id}>
-                  {desig.name}
+                  {desig.title}
                   {desig.level && ` (${desig.level})`}
-                  {desig.departments?.name && ` - ${desig.departments.name}`}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -390,7 +382,7 @@ INSERT INTO designations (name, level, department_id) VALUES
               <SelectItem value="none">None</SelectItem>
               {employees.map((emp) => (
                 <SelectItem key={emp.id} value={emp.id}>
-                  {emp.first_name} {emp.last_name} - {emp.designations?.name}
+                  {emp.name} - {emp.designation}
                 </SelectItem>
               ))}
             </SelectContent>

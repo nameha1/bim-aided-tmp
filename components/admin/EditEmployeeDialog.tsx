@@ -4,7 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { supabase } from "@/integrations/supabase/client";
+import { getDocuments } from "@/lib/firebase/firestore";
+import { where } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 
@@ -114,25 +115,43 @@ const EditEmployeeDialog = ({ employee, open, onOpenChange, onSuccess }: EditEmp
   };
 
   const fetchDepartments = async () => {
-    const { data, error } = await supabase.from("departments").select("*");
+    const { data, error } = await getDocuments("departments");
     if (error) throw error;
     setDepartments(data || []);
   };
 
   const fetchDesignations = async () => {
-    const { data, error } = await supabase.from("designations").select("*");
+    const { data, error } = await getDocuments("designations");
     if (error) throw error;
     setDesignations(data || []);
   };
 
   const fetchEmployees = async () => {
-    const { data, error } = await supabase
-      .from("employees")
-      .select("id, first_name, last_name, designations(name)")
-      .eq("employment_status", "Active")
-      .neq("id", employee?.id || ""); // Exclude current employee from supervisor list
+    const { data, error } = await getDocuments("employees", [
+      where("employment_status", "==", "Active")
+    ]);
     if (error) throw error;
-    setEmployees(data || []);
+    
+    // Filter out current employee from supervisor list and enrich with designation data
+    const filteredEmployees = (data || []).filter(emp => emp.id !== employee?.id);
+    
+    // Get designations for each employee
+    const enrichedEmployees = await Promise.all(
+      filteredEmployees.map(async (emp) => {
+        if (emp.designation_id) {
+          const { data: desigData } = await getDocuments("designations", [
+            where("id", "==", emp.designation_id)
+          ]);
+          return {
+            ...emp,
+            designations: desigData?.[0] || null
+          };
+        }
+        return { ...emp, designations: null };
+      })
+    );
+    
+    setEmployees(enrichedEmployees);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

@@ -17,7 +17,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { supabase } from "@/integrations/supabase/client";
+// TODO: Migrate to Firebase
+import { supabase } from "@/lib/supabase-stub";
 import { useToast } from "@/hooks/use-toast";
 import { Download, Calendar, Users, Clock } from "lucide-react";
 import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";

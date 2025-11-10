@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { User, Calendar, FileText, LogOut, Briefcase, Users, ClipboardList } from "lucide-react";
 import EmployeeProfile from "@/components/employee/EmployeeProfile";
@@ -31,66 +30,13 @@ export default function EmployeeDashboard() {
 
     const fetchData = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        // TODO: Migrate to Firebase - temporarily disabled
+        const { getCurrentUser } = await import('@/lib/firebase/auth');
+        const user = getCurrentUser();
         if (!user || !isMounted) return;
 
-        const { data: employee, error: empError } = await supabase
-          .from("employees")
-          .select(`
-            *,
-            departments!employees_department_id_fkey(name),
-            designations(name)
-          `)
-          .eq("user_id", user.id)
-          .single();
-
-        if (empError) {
-          console.error("Error fetching employee:", empError);
-          if (isMounted) setLoading(false);
-          return;
-        }
-
-        if (!isMounted) return;
-        setEmployeeData(employee);
-
-        // Check if this employee is a supervisor
-        const { count } = await supabase
-          .from("employees")
-          .select("*", { count: "exact", head: true })
-          .eq("supervisor_id", employee.id);
-
+        // TODO: Fetch employee data from Firestore
         if (isMounted) {
-          setIsSupervisor((count || 0) > 0);
-        }
-
-        // Check if this employee is a supervisor for any assignments
-        // Wrap in try-catch in case assignments table doesn't exist yet
-        try {
-          const { count: assignmentSupervisorCount, error: assignmentError } = await supabase
-            .from("project_assignments" as any)
-            .select("*", { count: "exact", head: true })
-            .eq("supervisor_id", employee.id);
-
-          if (!assignmentError && isMounted) {
-            setIsAssignmentSupervisor((assignmentSupervisorCount || 0) > 0);
-          }
-        } catch (assignmentErr) {
-          console.log("Assignments feature not yet available");
-          if (isMounted) {
-            setIsAssignmentSupervisor(false);
-          }
-        }
-
-        const currentYear = new Date().getFullYear();
-        const { data: balance } = await supabase
-          .from("leave_balances")
-          .select("*")
-          .eq("employee_id", employee.id)
-          .eq("year", currentYear)
-          .single();
-
-        if (isMounted) {
-          setLeaveBalance(balance);
           setLoading(false);
         }
       } catch (error) {
@@ -108,45 +54,27 @@ export default function EmployeeDashboard() {
 
   const fetchEmployeeData = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data: employee } = await supabase
-        .from("employees")
-        .select(`
-          *,
-          departments!employees_department_id_fkey(name),
-          designations(name)
-        `)
-        .eq("user_id", user.id)
-        .single();
-
-      setEmployeeData(employee);
-
-      // Check if this employee is a supervisor
-      const { count } = await supabase
-        .from("employees")
-        .select("*", { count: "exact", head: true })
-        .eq("supervisor_id", employee.id);
-
-      setIsSupervisor((count || 0) > 0);
-
-      const currentYear = new Date().getFullYear();
-      const { data: balance } = await supabase
-        .from("leave_balances")
-        .select("*")
-        .eq("employee_id", employee.id)
-        .eq("year", currentYear)
-        .single();
-
-      setLeaveBalance(balance);
+      // TODO: Migrate to Firebase - temporarily disabled
     } catch (error) {
       console.error("Error fetching employee data:", error);
     }
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      toast({
+        title: "Logged out",
+        description: "You have been successfully logged out.",
+      });
+      router.push("/login");
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
+  };
+
+  const handleLogoutOld = async () => {
+    // TODO: Remove after testing
     toast({
       title: "Logged out",
       description: "You have been successfully logged out.",
