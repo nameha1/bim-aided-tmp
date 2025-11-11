@@ -254,17 +254,17 @@ NEXT_PUBLIC_FIREBASE_APP_ID=1:596474269421:web:...
 FIREBASE_SERVICE_ACCOUNT_KEY='{"type":"service_account",...}'
 
 # MinIO Configuration
-MINIO_ENDPOINT=72.60.222.97
+MINIO_ENDPOINT=your-minio-endpoint
 MINIO_PORT=9000
 MINIO_ACCESS_KEY=your-access-key
 MINIO_SECRET_KEY=your-secret-key
 MINIO_USE_SSL=false
 
 # Email Configuration
-SMTP_ADMIN_EMAIL=bimaided.website@gmail.com
+SMTP_ADMIN_EMAIL=your-email@gmail.com
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
-SMTP_USER=bimaided.website@gmail.com
+SMTP_USER=your-email@gmail.com
 SMTP_PASS=your-app-password
 ```
 
@@ -400,7 +400,7 @@ limit(10)
 
 ## 💾 MinIO Storage Setup
 
-### Server Setup (On 72.60.222.97)
+### Server Setup
 
 ```bash
 # Install MinIO
@@ -446,7 +446,7 @@ sudo systemctl status minio
 
 **Access MinIO Console:**
 ```
-http://72.60.222.97:9001
+http://your-minio-ip:9001
 Username: admin
 Password: (your-secure-password)
 ```
@@ -467,7 +467,7 @@ Password: (your-secure-password)
 
 ```bash
 # Using MinIO Client (mc)
-mc alias set bimaided http://72.60.222.97:9000 admin your-password
+mc alias set bimaided http://your-minio-ip:9000 admin your-password
 mc mb bimaided/documents
 mc mb bimaided/images
 mc mb bimaided/cvs

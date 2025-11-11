@@ -76,17 +76,17 @@ FIREBASE_SERVICE_ACCOUNT_KEY='{"type":"service_account", ...}'
 
 ### Server Configuration
 ```env
-MINIO_ENDPOINT=bimaided-minio-071b16-72-60-222-97.traefik.me
+MINIO_ENDPOINT=your-minio-endpoint.traefik.me
 MINIO_PORT=80
 MINIO_USE_SSL=false
-MINIO_ACCESS_KEY=minioadmin
-MINIO_SECRET_KEY=rzicugo7mgcanezn
-MINIO_BUCKET=bimaided
+MINIO_ACCESS_KEY=your-access-key
+MINIO_SECRET_KEY=your-secret-key
+MINIO_BUCKET=your-bucket-name
 ```
 
 ### Public URL Configuration
 ```env
-NEXT_PUBLIC_MINIO_ENDPOINT=bimaided-minio-071b16-72-60-222-97.traefik.me
+NEXT_PUBLIC_MINIO_ENDPOINT=your-minio-endpoint.traefik.me
 NEXT_PUBLIC_MINIO_PORT=80
 NEXT_PUBLIC_MINIO_USE_SSL=false
 ```
@@ -247,20 +247,20 @@ Found 1 bucket(s):
 **Solutions**:
 1. Verify MinIO server is running:
    ```bash
-   curl http://bimaided-minio-071b16-72-60-222-97.traefik.me
+   curl http://your-minio-endpoint.traefik.me
    ```
 
 2. Check firewall rules allow port 80
 
 3. Verify credentials in `.env.local`:
    ```env
-   MINIO_ACCESS_KEY=minioadmin
-   MINIO_SECRET_KEY=rzicugo7mgcanezn
+   MINIO_ACCESS_KEY=your-access-key
+   MINIO_SECRET_KEY=your-secret-key
    ```
 
 4. Test with MinIO CLI:
    ```bash
-   mc alias set myminio http://bimaided-minio-071b16-72-60-222-97.traefik.me minioadmin rzicugo7mgcanezn
+   mc alias set myminio http://your-minio-endpoint.traefik.me your-access-key your-secret-key
    mc ls myminio
    ```
 
