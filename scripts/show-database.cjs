@@ -90,7 +90,8 @@ async function showDatabaseDetails() {
   console.log('   Email: admin@bimaided.com');
   console.log('   Password: Admin@123456');
   console.log('\n🌐 Firebase Console:');
-  console.log('   https://console.firebase.google.com/project/bimaided-b4447/firestore');
+  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'your-project-id';
+  console.log(`   https://console.firebase.google.com/project/${projectId}/firestore`);
   console.log('\n💻 Local App:');
   console.log('   http://localhost:3005/admin\n');
   

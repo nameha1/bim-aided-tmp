@@ -74,7 +74,8 @@ try {
       console.log('   - Firestore Database is not enabled in Firebase Console');
       console.log('   - Service account doesn\'t have proper permissions');
       console.log('\n📝 To fix:');
-      console.log('   1. Go to https://console.firebase.google.com/project/bimaided-b4447');
+      const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'your-project-id';
+      console.log(`   1. Go to https://console.firebase.google.com/project/${projectId}`);
       console.log('   2. Enable Firestore Database');
       console.log('   3. Enable Storage');
       console.log('   4. Enable Authentication');

@@ -29,7 +29,8 @@ async function listAllCollections() {
   
   console.log('\n✅ Scan complete!\n');
   console.log('🌐 View in Firebase Console:');
-  console.log('   https://console.firebase.google.com/project/bimaided-b4447/firestore\n');
+  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'your-project-id';
+  console.log(`   https://console.firebase.google.com/project/${projectId}/firestore\n`);
   
   process.exit(0);
 }
