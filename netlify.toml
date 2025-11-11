@@ -4,9 +4,10 @@
 
 [build.environment]
   NODE_VERSION = "20.18.0"
-  # Skip secrets scanning in build cache/artifacts
-  # The env var names in webpack cache trigger false positives
-  SECRETS_SCAN_OMIT_PATHS = ".netlify/**,.next/cache/**"
+  # Skip secrets scanning in build artifacts
+  # NEXT_PUBLIC_* vars are intentionally in client bundles (they're public)
+  # Documentation files with project IDs removed from repo
+  SECRETS_SCAN_OMIT_PATHS = ".netlify/**,.next/**"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"

@@ -28,6 +28,13 @@ dist-ssr
 # Deployment files with credentials (for local reference only)
 DEPLOY_NOW.md
 
+# Documentation files with project-specific IDs (keep locally only)
+FIRESTORE_DATABASE_STRUCTURE.md
+FIRESTORE_INDEXES.md
+HYBRID_STORAGE_DOCUMENTATION.md
+MIGRATION_DOCUMENTATION.md
+MIGRATION_STATUS.md
+
 # Admin API - CRITICAL: Never commit this!
 admin-api/.env
 
