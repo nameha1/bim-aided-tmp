@@ -1,0 +1,7 @@
+# Prevent accidental commits of environment files
+.env linguist-generated=false
+.env.* linguist-generated=false
+
+# Prevent accidental commits of build artifacts
+.next/** linguist-generated=true
+.netlify/** linguist-generated=true
