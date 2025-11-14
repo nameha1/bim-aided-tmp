@@ -106,41 +106,41 @@ const ParallaxHero = () => {
           }}
         >
           {/* Main Title */}
-          <h1 className="text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold mb-6 leading-tight">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold mb-4 md:mb-6 leading-tight px-2">
             <span className="block typing-text drop-shadow-[0_4px_20px_rgba(0,0,0,0.8)]">
               Building the Future
             </span>
-            <span className="block mt-2 bg-gradient-to-r from-white via-blue-100 to-white/90 bg-clip-text text-transparent animate-fade-in [animation-delay:2.5s] [animation-fill-mode:forwards] drop-shadow-[0_4px_20px_rgba(0,0,0,0.8)]">
+            <span className="block mt-1 md:mt-2 bg-gradient-to-r from-white via-blue-100 to-white/90 bg-clip-text text-transparent animate-fade-in [animation-delay:2.5s] [animation-fill-mode:forwards] drop-shadow-[0_4px_20px_rgba(0,0,0,0.8)]">
               with BIM Excellence
             </span>
           </h1>
 
           {/* Subtitle */}
-          <div className="animate-fade-in [animation-delay:3s] [animation-fill-mode:forwards] mb-12">
-            <p className="text-lg md:text-xl lg:text-2xl max-w-4xl mx-auto text-white/95 leading-relaxed mb-3 drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)]">
+          <div className="animate-fade-in [animation-delay:3s] [animation-fill-mode:forwards] mb-8 md:mb-12 px-4">
+            <p className="text-sm sm:text-base md:text-lg lg:text-xl max-w-4xl mx-auto text-white/95 leading-relaxed mb-2 md:mb-3 drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)]">
               Transform your construction projects with cutting-edge Building Information Modeling solutions.
             </p>
-            <p className="text-base md:text-lg lg:text-xl text-blue-100 font-medium drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)]">
+            <p className="text-xs sm:text-sm md:text-base lg:text-lg text-blue-100 font-medium drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)]">
               Expert BIM Services • Global Standards • Proven Excellence
             </p>
           </div>
 
           {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row gap-5 justify-center animate-fade-in [animation-delay:3.5s] [animation-fill-mode:forwards]">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-5 justify-center animate-fade-in [animation-delay:3.5s] [animation-fill-mode:forwards] px-4">
             <Link href="/services">
               <Button
                 size="lg"
-                className="text-base md:text-lg px-8 md:px-12 py-6 md:py-7 rounded-full bg-white text-sky-600 hover:bg-blue-50 shadow-[0_10px_40px_rgba(0,0,0,0.3)] transition-all hover:scale-105 font-semibold hover:shadow-[0_10px_50px_rgba(14,165,233,0.5)] border-2 border-white"
+                className="text-sm sm:text-base md:text-lg px-6 sm:px-8 md:px-12 py-5 sm:py-6 md:py-7 rounded-full bg-white text-sky-600 hover:bg-blue-50 shadow-[0_10px_40px_rgba(0,0,0,0.3)] transition-all hover:scale-105 font-semibold hover:shadow-[0_10px_50px_rgba(14,165,233,0.5)] border-2 border-white w-full sm:w-auto"
               >
                 Explore Our Services
-                <ArrowRight className="ml-2 w-5 h-5" />
+                <ArrowRight className="ml-2 w-4 h-4 sm:w-5 sm:h-5" />
               </Button>
             </Link>
             <Link href="/projects">
               <Button
                 size="lg"
                 variant="outline"
-                className="text-base md:text-lg px-8 md:px-12 py-6 md:py-7 rounded-full border-2 border-white/60 text-white bg-white/10 hover:bg-white/20 hover:border-white backdrop-blur-md transition-all font-semibold shadow-[0_10px_40px_rgba(0,0,0,0.2)] hover:scale-105"
+                className="text-sm sm:text-base md:text-lg px-6 sm:px-8 md:px-12 py-5 sm:py-6 md:py-7 rounded-full border-2 border-white/60 text-white bg-white/10 hover:bg-white/20 hover:border-white backdrop-blur-md transition-all font-semibold shadow-[0_10px_40px_rgba(0,0,0,0.2)] hover:scale-105 w-full sm:w-auto"
               >
                 View Our Work
               </Button>
