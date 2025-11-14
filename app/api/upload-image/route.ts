@@ -8,9 +8,12 @@ import { uploadFile } from '@/lib/storage/minio';
  */
 export async function POST(req: NextRequest) {
   try {
+    console.log('[Upload API] Starting upload request...');
     const formData = await req.formData();
     const file = formData.get('file') as File;
     const folder = (formData.get('folder') as string) || (formData.get('path') as string) || 'public/uploads';
+
+    console.log('[Upload API] File:', file?.name, 'Size:', file?.size, 'Folder:', folder);
 
     if (!file) {
       return NextResponse.json(
@@ -44,18 +47,22 @@ export async function POST(req: NextRequest) {
     const filePath = `${folder}/${fileName}`;
 
     // Upload to MinIO
+    console.log('[Upload API] Uploading to R2:', filePath);
     const { data, error } = await uploadFile(filePath, file, {
       'Content-Type': file.type,
       'Content-Disposition': `inline; filename="${sanitizedName}"`,
     });
 
     if (error) {
-      console.error('MinIO upload error:', error);
+      console.error('[Upload API] R2 upload error:', error);
+      console.error('[Upload API] Error details:', JSON.stringify(error, null, 2));
       return NextResponse.json(
-        { success: false, message: 'Failed to upload file', error: error.message },
+        { success: false, message: 'Failed to upload file to R2 storage', error: error.message || String(error) },
         { status: 500 }
       );
     }
+
+    console.log('[Upload API] Upload successful:', data?.url);
 
     return NextResponse.json({
       success: true,
@@ -70,9 +77,10 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (error: any) {
-    console.error('Upload error:', error);
+    console.error('[Upload API] Unexpected error:', error);
+    console.error('[Upload API] Error stack:', error.stack);
     return NextResponse.json(
-      { success: false, message: 'Failed to upload file', error: error.message },
+      { success: false, message: 'Failed to upload file', error: error.message || String(error) },
       { status: 500 }
     );
   }

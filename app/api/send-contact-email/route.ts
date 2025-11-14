@@ -4,10 +4,11 @@ import { NextResponse } from 'next/server';
 // Configure nodemailer transporter
 const createEmailTransporter = () => {
   return nodemailer.createTransport({
-    service: 'gmail',
+    host: process.env.SMTP_HOST,
+    port: parseInt(process.env.SMTP_PORT || '587'),
     auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASSWORD || process.env.EMAIL_APP_PASSWORD
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS
     }
   });
 };
@@ -24,7 +25,7 @@ export async function POST(req: Request) {
 
     const mailOptions = {
       from: `"${name}" <${email}>`,
-      to: process.env.EMAIL_USER,
+      to: process.env.EMAIL_TO,
       subject: `New Contact Form Submission: ${subject}`,
       html: `
         <p><strong>Name:</strong> ${name}</p>

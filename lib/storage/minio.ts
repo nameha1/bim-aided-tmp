@@ -18,6 +18,8 @@ export async function uploadFile(
   bucketName: string = DEFAULT_BUCKET
 ): Promise<{ data: { url: string; path: string } | null; error: any }> {
   try {
+    console.log('[R2] Starting upload:', { path, bucketName, fileType: file.constructor.name });
+    
     await ensureBucket(bucketName);
     const client = getMinioClient();
 
@@ -31,9 +33,11 @@ export async function uploadFile(
       buffer = Buffer.from(arrayBuffer);
       size = buffer.length;
       contentType = file instanceof File ? file.type : 'application/octet-stream';
+      console.log('[R2] Converted to buffer:', { size, contentType });
     } else if (Buffer.isBuffer(file)) {
       buffer = file;
       size = buffer.length;
+      console.log('[R2] Using buffer directly:', { size });
     } else {
       throw new Error('Unsupported file type');
     }
@@ -44,11 +48,15 @@ export async function uploadFile(
       ...metadata,
     };
 
+    console.log('[R2] Uploading to bucket:', { bucketName, path, size, metaData });
+    
     // Upload to MinIO
     await client.putObject(bucketName, path, buffer, size, metaData);
 
     // Get public URL
     const url = getPublicUrl(bucketName, path);
+    
+    console.log('[R2] Upload successful:', { url, path });
 
     return {
       data: {
@@ -57,8 +65,14 @@ export async function uploadFile(
       },
       error: null,
     };
-  } catch (error) {
-    console.error('Error uploading file to MinIO:', error);
+  } catch (error: any) {
+    console.error('[R2] Error uploading file:', error);
+    console.error('[R2] Error details:', {
+      message: error.message,
+      code: error.code,
+      statusCode: error.statusCode,
+      region: error.region,
+    });
     return { data: null, error };
   }
 }

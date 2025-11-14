@@ -8,11 +8,11 @@ import * as Minio from 'minio';
 // Storage Configuration from environment variables
 // Now using Cloudflare R2 (S3-compatible)
 const minioConfig = {
-  endPoint: process.env.MINIO_ENDPOINT || process.env.CLOUDFLARE_R2_ENDPOINT?.replace('https://', '') || 'your-server-ip',
+  endPoint: process.env.CLOUDFLARE_R2_ENDPOINT?.replace(/^https?:\/\//, '') || process.env.MINIO_ENDPOINT || 'd28078bd8d86342463905c45d566137c.r2.cloudflarestorage.com',
   port: parseInt(process.env.MINIO_PORT || '443'),
-  useSSL: process.env.MINIO_USE_SSL === 'true' || true,
-  accessKey: process.env.MINIO_ACCESS_KEY || process.env.CLOUDFLARE_R2_ACCESS_KEY_ID || '',
-  secretKey: process.env.MINIO_SECRET_KEY || process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY || '',
+  useSSL: process.env.MINIO_USE_SSL !== 'false',
+  accessKey: process.env.CLOUDFLARE_R2_ACCESS_KEY_ID || process.env.MINIO_ACCESS_KEY || '',
+  secretKey: process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY || process.env.MINIO_SECRET_KEY || '',
 };
 
 // Default bucket name
