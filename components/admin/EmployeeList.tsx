@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
 import { getDocuments, deleteDocument, getDocument } from "@/lib/firebase/firestore";
 import { where, orderBy } from "firebase/firestore";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Trash2, Shield, ShieldOff, Edit, Key } from "lucide-react";
+import { RefreshCw, Trash2, Shield, ShieldOff, Edit, Key, Mail, Calendar, Briefcase, User } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import EditEmployeeDialog from "./EditEmployeeDialog";
+import ViewEmployeeDialog from "./ViewEmployeeDialog";
 import ResetPasswordDialog from "./ResetPasswordDialog";
 import {
   AlertDialog,
@@ -28,13 +30,19 @@ const EmployeeList = ({ onUpdate }: EmployeeListProps) => {
   const [loading, setLoading] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [resetPasswordDialogOpen, setResetPasswordDialogOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
-    fetchEmployees();
+    // Wait for auth to initialize
+    const timer = setTimeout(() => {
+      fetchEmployees();
+    }, 1500);
+    
+    return () => clearTimeout(timer);
   }, []);
 
   const fetchEmployees = async () => {
@@ -221,115 +229,138 @@ const EmployeeList = ({ onUpdate }: EmployeeListProps) => {
         </Button>
       </div>
 
-      <div className="overflow-x-auto">
-        <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Name</TableHead>
-            <TableHead>EID</TableHead>
-            <TableHead>Email</TableHead>
-            <TableHead>Department</TableHead>
-            <TableHead>Designation</TableHead>
-            <TableHead>Role</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Joining Date</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {employees.map((employee) => {
-            const isAdmin = employee.roles?.includes('admin');
-            return (
-              <TableRow key={employee.id}>
-                <TableCell className="font-medium">
-                  {employee.name}
-                </TableCell>
-                <TableCell>
-                  {employee.eid ? (
-                    <Badge variant="secondary">{employee.eid}</Badge>
-                  ) : (
-                    <span className="text-muted-foreground text-sm">—</span>
-                  )}
-                </TableCell>
-                <TableCell>{employee.email}</TableCell>
-                <TableCell>{employee.department || "N/A"}</TableCell>
-                <TableCell>{employee.designation || "N/A"}</TableCell>
-                <TableCell>
-                  <div className="flex gap-1">
-                    <Badge variant="outline">
-                      employee
-                    </Badge>
+      {employees.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <User className="h-16 w-16 text-gray-300 mb-4" />
+          <h3 className="text-lg font-semibold text-gray-700 mb-2">No Employees Found</h3>
+          <p className="text-gray-500 mb-4">Get started by adding your first employee</p>
+        </div>
+      ) : (
+        /* Card Grid View */
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+        {employees.map((employee) => {
+          const isAdmin = employee.roles?.includes('admin');
+          const initials = employee.name
+            ?.split(' ')
+            .map((n: string) => n[0])
+            .join('')
+            .toUpperCase()
+            .slice(0, 2) || 'NA';
+          
+          return (
+            <Card key={employee.id} className="hover:shadow-lg transition-shadow">
+              <CardHeader className="pb-3">
+                <div className="flex flex-col items-center space-y-3">
+                  {/* Profile Picture */}
+                  <Avatar className="h-20 w-20 border-4 border-primary/20">
+                    <AvatarImage 
+                      src={employee.profileImageUrl || employee.profile_picture || employee.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(employee.name)}&background=3b82f6&color=fff&size=200`} 
+                      alt={employee.name}
+                    />
+                    <AvatarFallback className="text-xl font-semibold bg-gradient-to-br from-primary/80 to-primary text-white">
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
+                  
+                  {/* Name and EID */}
+                  <div className="text-center space-y-1.5 w-full">
+                    <h3 className="font-semibold text-base leading-tight">{employee.name}</h3>
+                    {employee.eid && (
+                      <Badge variant="secondary" className="text-xs font-mono">
+                        EID: {employee.eid}
+                      </Badge>
+                    )}
                     {isAdmin && (
-                      <Badge variant="default">
-                        admin
+                      <Badge variant="default" className="text-xs ml-1">
+                        Admin
                       </Badge>
                     )}
                   </div>
-                </TableCell>
-                <TableCell>
-                  <Badge variant={employee.status === "active" ? "default" : "secondary"}>
-                    {employee.status}
-                  </Badge>
-                </TableCell>
-                <TableCell>{employee.joining_date ? new Date(employee.joining_date).toLocaleDateString() : "N/A"}</TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-2 flex-wrap">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setSelectedEmployee(employee);
-                        setEditDialogOpen(true);
-                      }}
-                      disabled={actionLoading}
-                      title="Edit employee"
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setSelectedEmployee(employee);
-                        setResetPasswordDialogOpen(true);
-                      }}
-                      disabled={actionLoading}
-                      title="Reset password"
-                    >
-                      <Key className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant={isAdmin ? "outline" : "default"}
-                      size="sm"
-                      onClick={() => handleToggleAdminRole(employee)}
-                      disabled={actionLoading}
-                      title={isAdmin ? "Revoke admin access" : "Grant admin access"}
-                    >
-                      {isAdmin ? (
-                        <ShieldOff className="h-4 w-4" />
-                      ) : (
-                        <Shield className="h-4 w-4" />
-                      )}
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => {
-                        setSelectedEmployee(employee);
-                        setDeleteDialogOpen(true);
-                      }}
-                      disabled={actionLoading}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
+                </div>
+              </CardHeader>
+              
+              <CardContent className="space-y-2 pt-2">
+                {/* View Details Button */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setSelectedEmployee(employee);
+                    setViewDialogOpen(true);
+                  }}
+                  className="w-full"
+                >
+                  <User className="h-4 w-4 mr-2" />
+                  View Details
+                </Button>
+                
+                {/* Action Buttons */}
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedEmployee(employee);
+                      setEditDialogOpen(true);
+                    }}
+                    disabled={actionLoading}
+                    className="w-full"
+                  >
+                    <Edit className="h-4 w-4 mr-1" />
+                    Edit
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedEmployee(employee);
+                      setResetPasswordDialogOpen(true);
+                    }}
+                    disabled={actionLoading}
+                    className="w-full"
+                  >
+                    <Key className="h-4 w-4 mr-1" />
+                    Reset
+                  </Button>
+                  <Button
+                    variant={isAdmin ? "outline" : "default"}
+                    size="sm"
+                    onClick={() => handleToggleAdminRole(employee)}
+                    disabled={actionLoading}
+                    className="w-full"
+                  >
+                    {isAdmin ? (
+                      <>
+                        <ShieldOff className="h-4 w-4 mr-1" />
+                        Revoke
+                      </>
+                    ) : (
+                      <>
+                        <Shield className="h-4 w-4 mr-1" />
+                        Admin
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedEmployee(employee);
+                      setDeleteDialogOpen(true);
+                    }}
+                    disabled={actionLoading}
+                    className="w-full"
+                  >
+                    <Trash2 className="h-4 w-4 mr-1" />
+                    Delete
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
+      )}
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
@@ -353,6 +384,13 @@ const EmployeeList = ({ onUpdate }: EmployeeListProps) => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* View Employee Dialog */}
+      <ViewEmployeeDialog
+        employee={selectedEmployee}
+        open={viewDialogOpen}
+        onOpenChange={setViewDialogOpen}
+      />
 
       {/* Edit Employee Dialog */}
       <EditEmployeeDialog

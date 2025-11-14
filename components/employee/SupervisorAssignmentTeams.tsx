@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
-// TODO: Migrate to Firebase
-import { supabase } from "@/lib/supabase-stub";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Users as UsersIcon } from "lucide-react";
+import { Plus, Trash2, Users as UsersIcon, FileText } from "lucide-react";
+import { getDocuments, createDocument, deleteDocument, getDocument } from "@/lib/firebase/firestore";
+import { where } from "firebase/firestore";
+import { getCurrentUser } from "@/lib/firebase/auth";
 import {
   Dialog,
   DialogContent,
@@ -38,6 +39,7 @@ import {
 interface SupervisedAssignment {
   id: string;
   title: string;
+  project_note: string | null;
   members: AssignmentMember[];
 }
 
@@ -77,33 +79,90 @@ const SupervisorAssignmentTeams = () => {
 
   const fetchSupervisedAssignments = async () => {
     try {
-      const { data: userData } = await supabase.auth.getUser();
-      const { data: employeeData } = await supabase
-        .from("employees")
-        .select("id")
-        .eq("user_id", userData.user?.id)
-        .single();
-
-      if (!employeeData) {
+      const currentUser = getCurrentUser();
+      if (!currentUser) {
+        console.log("No current user found");
         setLoading(false);
         return;
       }
 
+      console.log("Current user UID:", currentUser.uid);
+
+      // Get employee data from Firebase (using auth_uid field)
+      const { data: employeeData, error: employeeError } = await getDocuments("employees", [
+        where("auth_uid", "==", currentUser.uid)
+      ]);
+
+      if (employeeError || !employeeData || employeeData.length === 0) {
+        console.log("No employee found for user:", employeeError);
+        setLoading(false);
+        return;
+      }
+
+      const employee = employeeData[0];
+      console.log("Employee found:", { id: employee.id, email: employee.email });
+
       // Get assignments where this employee is the supervisor
-      const { data, error } = await supabase
-        .from("project_assignments" as any)
-        .select("*")
-        .eq("supervisor_id", employeeData.id);
+      const { data, error } = await getDocuments("assignments", [
+        where("supervisor_id", "==", employee.id)
+      ]);
+
+      console.log("Supervised assignments query result:", { data, error });
 
       if (error) {
-        // If assignments table doesn't exist yet, just set empty assignments
+        // If assignments feature doesn't exist yet, just set empty assignments
         console.log("Assignments feature not yet available:", error);
         setAssignments([]);
         setLoading(false);
         return;
       }
-      
-      setAssignments(data as any || []);
+
+      // Debug: Also fetch ALL assignments to see what's in the database
+      const { data: allAssignments } = await getDocuments("assignments");
+      console.log("All assignments in database:", allAssignments);
+      console.log("Assignments with supervisor_id:", 
+        allAssignments?.filter((a: any) => a.supervisor_id)
+          .map((a: any) => ({ title: a.title, supervisor_id: a.supervisor_id }))
+      );
+
+      // For each assignment, get its members
+      const assignmentsWithMembers = await Promise.all(
+        (data || []).map(async (assignment: any) => {
+          const { data: members } = await getDocuments("assignment_members", [
+            where("assignment_id", "==", assignment.id)
+          ]);
+
+          console.log("Members for assignment", assignment.title, ":", members);
+
+          // Get employee details for each member using getDocument
+          const membersWithDetails = await Promise.all(
+            (members || []).map(async (member: any) => {
+              console.log("Fetching employee with ID:", member.employee_id);
+              const { data: emp, error: empError } = await getDocument("employees", member.employee_id);
+              if (empError) {
+                console.log("Error fetching employee:", empError);
+              }
+              console.log("Employee data:", emp);
+              return {
+                member_id: member.id,
+                employee_id: member.employee_id,
+                employee_name: emp ? `${emp.first_name || emp.firstName || ''} ${emp.last_name || emp.lastName || ''}`.trim() || "Unknown" : "Unknown",
+                role: member.role,
+                personal_note: member.personal_note,
+              };
+            })
+          );
+
+          return {
+            id: assignment.id,
+            title: assignment.title,
+            project_note: assignment.project_note || null,
+            members: membersWithDetails,
+          };
+        })
+      );
+
+      setAssignments(assignmentsWithMembers);
     } catch (error: any) {
       console.log("Assignments feature not yet available:", error);
       setAssignments([]);
@@ -114,25 +173,25 @@ const SupervisorAssignmentTeams = () => {
 
   const fetchEmployees = async () => {
     try {
-      const { data, error } = await supabase
-        .from("employees")
-        .select("id, first_name, last_name, email")
-        .eq("employment_status", "Active")
-        .order("first_name");
+      const { data, error } = await getDocuments("employees", [
+        where("status", "==", "active")
+      ]);
 
       if (error) throw error;
 
-      const employeesWithFullName = (data || []).map(emp => ({
+      const employeesWithFullName = (data || []).map((emp: any) => ({
         id: emp.id,
-        full_name: `${emp.first_name} ${emp.last_name}`,
+        full_name: `${emp.first_name || emp.firstName || ''} ${emp.last_name || emp.lastName || ''}`.trim() || emp.name || "Unknown",
         email: emp.email,
-      }));
+      }))
+      // Sort in JavaScript to avoid needing a composite index
+      .sort((a, b) => a.full_name.localeCompare(b.full_name));
 
       setEmployees(employeesWithFullName);
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "Failed to fetch employees",
         variant: "destructive",
       });
     }
@@ -149,14 +208,12 @@ const SupervisorAssignmentTeams = () => {
     }
 
     try {
-      const { error } = await supabase
-        .from("assignment_members" as any)
-        .insert({
-          assignment_id: selectedAssignmentId,
-          employee_id: employeeId,
-          role: role,
-          personal_note: personalNote || null,
-        });
+      const { error } = await createDocument("assignment_members", {
+        assignment_id: selectedAssignmentId,
+        employee_id: employeeId,
+        role: role,
+        personal_note: personalNote || null,
+      });
 
       if (error) throw error;
 
@@ -174,7 +231,7 @@ const SupervisorAssignmentTeams = () => {
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "Failed to add team member",
         variant: "destructive",
       });
     }
@@ -184,10 +241,7 @@ const SupervisorAssignmentTeams = () => {
     if (!memberToDelete) return;
 
     try {
-      const { error } = await supabase
-        .from("assignment_members" as any)
-        .delete()
-        .eq("id", memberToDelete);
+      const { error } = await deleteDocument("assignment_members", memberToDelete);
 
       if (error) throw error;
 
@@ -202,7 +256,7 @@ const SupervisorAssignmentTeams = () => {
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "Failed to remove team member",
         variant: "destructive",
       });
     }
@@ -235,8 +289,8 @@ const SupervisorAssignmentTeams = () => {
         {assignments.map((assignment) => (
           <Card key={assignment.id}>
             <CardHeader>
-              <div className="flex justify-between items-start">
-                <div>
+              <div className="flex justify-between items-start mb-3">
+                <div className="flex-1">
                   <CardTitle>{assignment.title}</CardTitle>
                   <CardDescription className="flex items-center gap-2 mt-2">
                     <UsersIcon className="h-4 w-4" />
@@ -310,9 +364,25 @@ const SupervisorAssignmentTeams = () => {
                   </DialogContent>
                 </Dialog>
               </div>
+              
+              {/* Project Note Section */}
+              {assignment.project_note && (
+                <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <div className="flex items-start gap-2">
+                    <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="text-xs font-semibold text-blue-900 dark:text-blue-100 mb-1">
+                        Project Note:
+                      </p>
+                      <p className="text-sm text-blue-800 dark:text-blue-200">{assignment.project_note}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </CardHeader>
             <CardContent>
-              <div className="space-y-2">
+              <div className="space-y-3">
+                <h4 className="text-sm font-semibold text-muted-foreground mb-2">Team Members</h4>
                 {assignment.members && assignment.members.length > 0 ? (
                   assignment.members.map((member) => (
                     <Card key={member.member_id}>

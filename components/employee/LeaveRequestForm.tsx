@@ -4,8 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-// TODO: Migrate to Firebase
-import { supabase } from "@/lib/supabase-stub";
+import { createDocument, getDocuments } from "@/lib/firebase/firestore";
+import { where } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { Upload, X } from "lucide-react";
 
@@ -49,79 +49,63 @@ const LeaveRequestForm = ({ employeeId, onSuccess }: LeaveRequestFormProps) => {
 
     try {
       // Get employee details for folder name
-      const { data: employeeData } = await supabase
-        .from("employees")
-        .select("first_name, last_name")
-        .eq("id", employeeId)
-        .single();
+      const { data: employeeData } = await getDocuments("employees", [
+        where("id", "==", employeeId)
+      ]);
 
-      const employeeName = `${employeeData?.first_name} ${employeeData?.last_name}`;
+      const employee = employeeData?.[0];
+      const employeeName = employee ? `${employee.firstName} ${employee.lastName}` : 'Unknown';
       
       let fileUrl = null;
-      let fileId = null;
 
-      // Upload file to Supabase Storage if selected
+      // Upload file to R2 if selected
       if (selectedFile) {
         setUploadingFile(true);
         try {
-          // Generate file path with employee name and timestamp
-          const timestamp = Date.now();
-          const fileExt = selectedFile.name.split('.').pop();
-          const filePath = `${employeeName.replace(/\s+/g, '_')}/${timestamp}.${fileExt}`;
+          const formData = new FormData();
+          formData.append('file', selectedFile);
+          formData.append('folder', `leave-documents/${employeeName.replace(/\s+/g, '_')}`);
 
-          // Create storage bucket if it doesn't exist (will fail silently if exists)
-          const { data: buckets } = await supabase.storage.listBuckets();
-          const leaveDocsExists = buckets?.some(b => b.name === 'leave-documents');
-          
-          if (!leaveDocsExists) {
-            await supabase.storage.createBucket('leave-documents', {
-              public: false,
-              fileSizeLimit: 10485760, // 10MB
-            });
+          const uploadResponse = await fetch('/api/upload-image', {
+            method: 'POST',
+            body: formData,
+          });
+
+          if (!uploadResponse.ok) {
+            throw new Error('File upload failed');
           }
 
-          // Upload file to Supabase Storage
-          const { data: uploadData, error: uploadError } = await supabase.storage
-            .from('leave-documents')
-            .upload(filePath, selectedFile, {
-              cacheControl: '3600',
-              upsert: false,
-            });
-
-          if (uploadError) throw uploadError;
-
-          // Get public URL
-          const { data: { publicUrl } } = supabase.storage
-            .from('leave-documents')
-            .getPublicUrl(filePath);
-
-          fileUrl = publicUrl;
-          fileId = uploadData.path;
+          const uploadResult = await uploadResponse.json();
+          fileUrl = uploadResult.url;
         } catch (fileError: any) {
           console.error('File upload error:', fileError);
           toast({
             title: "Warning",
             description: "Leave request submitted but file upload failed. You can resubmit the document later.",
-            variant: "destructive",
           });
         } finally {
           setUploadingFile(false);
         }
       }
 
-      // Insert leave request with file info
-      const { error } = await supabase.from("attendance").insert({
+      // Get employee's supervisor_id
+      const supervisor_id = employee?.supervisor_id || null;
+
+      // Create leave request in Firestore
+      const { error } = await createDocument("leave_requests", {
         employee_id: employeeId,
-        date: formData.startDate,
-        leave_start_date: formData.startDate,
-        leave_end_date: formData.endDate,
-        status: "Leave" as any,
-        leave_type: formData.leaveType as any,
-        leave_reason: formData.reason,
+        supervisor_id: supervisor_id,
+        start_date: formData.startDate,
+        end_date: formData.endDate,
+        leave_type: formData.leaveType,
+        reason: formData.reason,
+        status: supervisor_id ? "pending_supervisor" : "pending_admin",
         supervisor_approved: false,
         admin_approved: false,
         supporting_document_url: fileUrl,
-      } as any);
+        created_at: new Date(),
+        updated_at: new Date(),
+      });
 
       if (error) throw error;
 

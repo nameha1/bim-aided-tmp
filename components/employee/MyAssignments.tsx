@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
-// TODO: Migrate to Firebase
-import { supabase } from "@/lib/supabase-stub";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Calendar, Clock, CheckCircle, Eye, Users, ClipboardList } from "lucide-react";
+import { getDocuments, updateDocument, getDocument } from "@/lib/firebase/firestore";
+import { where } from "firebase/firestore";
+import { getCurrentUser } from "@/lib/firebase/auth";
 import {
   Dialog,
   DialogContent,
@@ -46,31 +47,38 @@ const MyAssignments = () => {
 
   const fetchMyAssignments = async () => {
     try {
-      const { data: userData } = await supabase.auth.getUser();
-      const { data: employeeData } = await supabase
-        .from("employees")
-        .select("id")
-        .eq("user_id", userData.user?.id)
-        .single();
-
-      if (!employeeData) {
+      const currentUser = getCurrentUser();
+      if (!currentUser) {
+        console.log("No current user found");
         setLoading(false);
         return;
       }
 
+      console.log("Current user UID:", currentUser.uid);
+
+      // Get employee data from Firebase (using auth_uid field)
+      const { data: employeeData, error: employeeError } = await getDocuments("employees", [
+        where("auth_uid", "==", currentUser.uid)
+      ]);
+
+      if (employeeError || !employeeData || employeeData.length === 0) {
+        console.log("No employee found for user:", employeeError);
+        setLoading(false);
+        return;
+      }
+
+      const employee = employeeData[0];
+      console.log("Employee found:", { id: employee.id, email: employee.email });
+
       // Get assignments where this employee is a member
-      const { data: memberAssignments, error: memberError } = await supabase
-        .from("assignment_members" as any)
-        .select(`
-          id,
-          role,
-          personal_note,
-          assignment_id
-        `)
-        .eq("employee_id", employeeData.id);
+      const { data: memberAssignments, error: memberError } = await getDocuments("assignment_members", [
+        where("employee_id", "==", employee.id)
+      ]);
+
+      console.log("Member assignments found:", memberAssignments?.length || 0);
 
       if (memberError) {
-        // If assignments table doesn't exist yet, just set empty assignments
+        // If assignments feature doesn't exist yet, just set empty assignments
         console.log("Assignments feature not yet available:", memberError);
         setAssignments([]);
         setLoading(false);
@@ -84,28 +92,53 @@ const MyAssignments = () => {
       }
 
       // Get full assignment details
-      const assignmentIds = (memberAssignments as any[]).map(m => m.assignment_id);
-      const { data: assignmentsData, error: assignmentsError } = await supabase
-        .from("project_assignments" as any)
-        .select("*")
-        .in("id", assignmentIds)
-        .order("deadline", { ascending: true });
+      const assignmentIds = memberAssignments.map((m: any) => m.assignment_id);
+      console.log("Assignment IDs to fetch:", assignmentIds);
+      
+      // Fetch each assignment individually by document ID
+      const assignmentsPromises = assignmentIds.map(async (assignmentId: string) => {
+        const { data: assignmentData, error } = await getDocument("assignments", assignmentId);
+        if (error) {
+          console.log("Error fetching assignment:", assignmentId, error);
+          return null;
+        }
+        console.log("Fetched assignment:", assignmentData?.title);
+        return assignmentData;
+      });
 
-      if (assignmentsError) throw assignmentsError;
+      const assignmentsResults = await Promise.all(assignmentsPromises);
+      const assignmentsData = assignmentsResults.filter(a => a !== null);
+      console.log("Total assignments fetched:", assignmentsData.length);
+
+      // Sort by deadline
+      assignmentsData.sort((a: any, b: any) => {
+        return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
+      });
 
       // Get all members for each assignment
       const assignmentsWithMembers = await Promise.all(
-        (assignmentsData || []).map(async (assignment: any) => {
-          const { data: allMembers } = await supabase
-            .from("assignment_members" as any)
-            .select(`
-              role,
-              employees!inner(first_name, last_name, email)
-            `)
-            .eq("assignment_id", assignment.id);
+        assignmentsData.map(async (assignment: any) => {
+          const { data: allMembers } = await getDocuments("assignment_members", [
+            where("assignment_id", "==", assignment.id)
+          ]);
 
-          const myMembership: any = (memberAssignments as any[]).find(
-            m => m.assignment_id === assignment.id
+          // Get employee details for each member using getDocument
+          const membersWithDetails = await Promise.all(
+            (allMembers || []).map(async (member: any) => {
+              const { data: emp, error: empError } = await getDocument("employees", member.employee_id);
+              if (empError) {
+                console.log("Error fetching employee:", empError);
+              }
+              return {
+                employee_name: emp ? `${emp.first_name || emp.firstName || ''} ${emp.last_name || emp.lastName || ''}`.trim() || emp.name || "Unknown" : "Unknown",
+                employee_email: emp?.email || "",
+                role: member.role,
+              };
+            })
+          );
+
+          const myMembership = memberAssignments.find(
+            (m: any) => m.assignment_id === assignment.id
           );
 
           return {
@@ -117,11 +150,7 @@ const MyAssignments = () => {
             status: assignment.status,
             my_role: myMembership?.role || "",
             my_personal_note: myMembership?.personal_note || null,
-            members: (allMembers || []).map((m: any) => ({
-              employee_name: `${m.employees.first_name} ${m.employees.last_name}`,
-              employee_email: m.employees.email,
-              role: m.role,
-            })),
+            members: membersWithDetails,
           };
         })
       );
@@ -130,7 +159,7 @@ const MyAssignments = () => {
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "Failed to fetch assignments",
         variant: "destructive",
       });
     } finally {
@@ -140,10 +169,9 @@ const MyAssignments = () => {
 
   const handleMarkCompleted = async (assignmentId: string) => {
     try {
-      const { error } = await supabase
-        .from("project_assignments" as any)
-        .update({ status: "completed" })
-        .eq("id", assignmentId);
+      const { error } = await updateDocument("assignments", assignmentId, {
+        status: "completed"
+      });
 
       if (error) throw error;
 
@@ -156,7 +184,7 @@ const MyAssignments = () => {
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "Failed to update assignment",
         variant: "destructive",
       });
     }

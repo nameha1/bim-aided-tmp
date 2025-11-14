@@ -17,14 +17,9 @@ const Footer = () => {
           <div>
             <img 
               src="/Logo-BIMaided.png" 
-              alt="BIMaided Logo" 
-              className="h-16 w-auto mb-4 brightness-0 invert"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none';
-                e.currentTarget.nextElementSibling?.classList.remove('hidden');
-              }}
+              alt="BIM aided Logo" 
+              className="h-16 w-auto mb-4"
             />
-            <h3 className="text-xl font-bold text-white mb-4 hidden">BIMaided</h3>
             <p className="text-sm text-gray-300">
               Leading BIM solutions provider delivering excellence in Building Information Modeling services worldwide.
             </p>

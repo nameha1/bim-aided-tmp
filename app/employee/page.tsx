@@ -6,15 +6,17 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { User, Calendar, FileText, LogOut, Briefcase, Users, ClipboardList } from "lucide-react";
+import { User, Calendar, FileText, LogOut, Briefcase, Users, ClipboardList, CheckCircle, History, PartyPopper, ListTodo } from "lucide-react";
 import EmployeeProfile from "@/components/employee/EmployeeProfile";
 import LeaveRequestForm from "@/components/employee/LeaveRequestForm";
+import LeaveBalanceDisplay from "@/components/employee/LeaveBalanceDisplay";
 import AttendanceHistory from "@/components/employee/AttendanceHistory";
-import SupervisorLeaveRequests from "@/components/admin/SupervisorLeaveRequests";
+import SupervisorLeaveApprovals from "@/components/employee/SupervisorLeaveApprovals";
 import MyAssignments from "@/components/employee/MyAssignments";
 import SupervisorAssignmentTeams from "@/components/employee/SupervisorAssignmentTeams";
 import HolidayCalendar from "@/components/employee/HolidayCalendar";
 import AttendanceCheckIn from "@/components/employee/AttendanceCheckIn";
+import TeamOverview from "@/components/employee/TeamOverview";
 
 export default function EmployeeDashboard() {
   const [employeeData, setEmployeeData] = useState<any>(null);
@@ -27,21 +29,140 @@ export default function EmployeeDashboard() {
 
   useEffect(() => {
     let isMounted = true;
+    let timeoutId: NodeJS.Timeout;
+    let authUnsubscribe: (() => void) | null = null;
 
     const fetchData = async () => {
       try {
-        // TODO: Migrate to Firebase - temporarily disabled
-        const { getCurrentUser } = await import('@/lib/firebase/auth');
-        const user = getCurrentUser();
-        if (!user || !isMounted) return;
+        console.log("Starting employee data fetch...");
+        
+        // Set a timeout to prevent infinite loading
+        timeoutId = setTimeout(() => {
+          if (isMounted && loading) {
+            console.error("Employee data fetch timed out");
+            toast({
+              title: "Loading timeout",
+              description: "Unable to load employee data. Please try refreshing the page.",
+              variant: "destructive",
+            });
+            setLoading(false);
+          }
+        }, 10000); // 10 second timeout
+        
+        // Import Firebase auth functions
+        const { getCurrentUser, onAuthStateChanged } = await import('@/lib/firebase/auth');
+        
+        // Wait for auth to initialize properly
+        console.log("Waiting for Firebase Auth to initialize...");
+        
+        const user = await new Promise<any>((resolve) => {
+          // First, check if user is already available
+          const currentUser = getCurrentUser();
+          if (currentUser) {
+            console.log("User already authenticated:", currentUser.uid);
+            resolve(currentUser);
+            return;
+          }
+          
+          // If not, wait for auth state change (max 5 seconds)
+          console.log("Waiting for auth state change...");
+          let authTimeout: NodeJS.Timeout;
+          
+          authUnsubscribe = onAuthStateChanged((user) => {
+            clearTimeout(authTimeout);
+            console.log("Auth state changed:", user ? user.uid : "no user");
+            resolve(user);
+          });
+          
+          // Timeout after 5 seconds if no auth state change
+          authTimeout = setTimeout(() => {
+            console.log("Auth state timeout, no user detected");
+            resolve(null);
+          }, 5000);
+        });
+        
+        console.log("Current user:", user ? user.uid : "No user found");
+        
+        if (!user) {
+          console.error("No user found, redirecting to login");
+          if (isMounted) {
+            setLoading(false);
+            toast({
+              title: "Authentication required",
+              description: "Please log in to access the employee portal.",
+              variant: "destructive",
+            });
+            router.push("/login");
+          }
+          return;
+        }
 
-        // TODO: Fetch employee data from Firestore
+        if (!isMounted) return;
+
+        // Fetch employee data from Firestore
+        const { getDocuments } = await import('@/lib/firebase/firestore');
+        const { where } = await import('firebase/firestore');
+        
+        console.log("Fetching employee data for auth_uid:", user.uid);
+        
+        const { data: employees, error } = await getDocuments('employees', [
+          where('auth_uid', '==', user.uid)
+        ]);
+        
+        if (error) {
+          console.error("Error fetching employee data:", error);
+          throw error;
+        }
+        
+        console.log("Employees found:", employees ? employees.length : 0);
+        
+        if (!employees || employees.length === 0) {
+          console.error("No employee record found for user:", user.uid);
+          if (isMounted) {
+            toast({
+              title: "Employee record not found",
+              description: "No employee record is associated with your account. Please contact your administrator.",
+              variant: "destructive",
+            });
+            setLoading(false);
+          }
+          return;
+        }
+        
+        if (employees && employees.length > 0 && isMounted) {
+          const employee = employees[0];
+          console.log("Employee data loaded:", employee.id);
+          setEmployeeData(employee);
+          
+          // Check if user is a supervisor
+          const { data: supervisedEmployees } = await getDocuments('employees', [
+            where('supervisor_id', '==', employee.id)
+          ]);
+          setIsSupervisor(supervisedEmployees && supervisedEmployees.length > 0);
+          
+          // Check if user is an assignment supervisor
+          const { data: supervisedAssignments } = await getDocuments('assignments', [
+            where('supervisor_id', '==', employee.id)
+          ]);
+          setIsAssignmentSupervisor(supervisedAssignments && supervisedAssignments.length > 0);
+        }
+        
         if (isMounted) {
+          clearTimeout(timeoutId);
           setLoading(false);
+          console.log("Employee data fetch complete");
         }
       } catch (error) {
         console.error("Error fetching employee data:", error);
-        if (isMounted) setLoading(false);
+        if (isMounted) {
+          clearTimeout(timeoutId);
+          toast({
+            title: "Error loading data",
+            description: "Failed to load employee data. Please try refreshing the page.",
+            variant: "destructive",
+          });
+          setLoading(false);
+        }
       }
     };
 
@@ -49,8 +170,10 @@ export default function EmployeeDashboard() {
 
     return () => {
       isMounted = false;
+      if (timeoutId) clearTimeout(timeoutId);
+      if (authUnsubscribe) authUnsubscribe();
     };
-  }, []);
+  }, [router, toast]);
 
   const fetchEmployeeData = async () => {
     try {
@@ -82,12 +205,43 @@ export default function EmployeeDashboard() {
     router.push("/login");
   };
 
-  if (loading || !employeeData) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-lg text-muted-foreground">Loading employee data...</p>
+          <p className="text-sm text-muted-foreground mt-2">This should only take a moment</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!employeeData) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center max-w-md">
+          <h2 className="text-2xl font-bold mb-4">Employee Record Not Found</h2>
+          <p className="text-muted-foreground mb-6">
+            We couldn't find an employee record associated with your account. 
+            This may be because:
+          </p>
+          <ul className="text-left text-sm text-muted-foreground mb-6 space-y-2">
+            <li>• Your employee account hasn't been created yet</li>
+            <li>• Your employee record is not linked to your login account</li>
+            <li>• There was an error during account setup</li>
+          </ul>
+          <p className="text-sm text-muted-foreground mb-6">
+            Please contact your administrator to link your employee record to your account.
+          </p>
+          <div className="space-y-2">
+            <Button onClick={() => window.location.reload()} className="w-full">
+              Retry
+            </Button>
+            <Button variant="outline" onClick={handleLogout} className="w-full">
+              Logout
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -97,7 +251,11 @@ export default function EmployeeDashboard() {
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-primary">BIMaided Employee Portal</h1>
+          <img 
+            src="/Logo-BIMaided.png" 
+            alt="BIM aided Logo" 
+            className="h-12 md:h-14 w-auto object-contain"
+          />
           <Button variant="outline" onClick={handleLogout}>
             <LogOut size={16} className="mr-2" />
             Logout
@@ -107,14 +265,53 @@ export default function EmployeeDashboard() {
 
       <div className="container mx-auto px-4 py-8">
         {/* Welcome Section */}
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold mb-2">
-            Welcome, {employeeData.first_name} {employeeData.last_name}
-          </h2>
-          <p className="text-muted-foreground">
-            {employeeData.designations?.name} | {employeeData.departments?.name}
-          </p>
-        </div>
+        <Card className="mb-8 border-border bg-gradient-to-r from-primary/5 to-primary/10">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-6">
+              {/* Profile Picture */}
+              <div className="flex-shrink-0">
+                {employeeData.profileImageUrl ? (
+                  <div className="relative">
+                    <div className="w-24 h-24 rounded-full bg-background p-1">
+                      <img 
+                        src={employeeData.profileImageUrl} 
+                        alt={`${employeeData.firstName || employeeData.first_name} ${employeeData.lastName || employeeData.last_name}`}
+                        className="w-full h-full rounded-full object-cover"
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="w-24 h-24 rounded-full bg-background p-1">
+                    <div className="w-full h-full rounded-full bg-primary/10 flex items-center justify-center">
+                      <User size={48} className="text-primary" />
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              {/* Welcome Text */}
+              <div className="flex-1">
+                <h2 className="text-3xl font-bold mb-2">
+                  Welcome, {employeeData.firstName || employeeData.first_name} {employeeData.lastName || employeeData.last_name}
+                </h2>
+                <div className="flex flex-wrap items-center gap-3 text-sm">
+                  <div className="flex items-center gap-1.5 bg-background/80 px-3 py-1.5 rounded-md">
+                    <Briefcase size={16} className="text-primary" />
+                    <span className="font-medium">{employeeData.designation || employeeData.designations?.name}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 bg-background/80 px-3 py-1.5 rounded-md">
+                    <Users size={16} className="text-primary" />
+                    <span className="font-medium">{employeeData.department || employeeData.departments?.name}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 bg-background/80 px-3 py-1.5 rounded-md">
+                    <User size={16} className="text-primary" />
+                    <span className="font-medium">EID: {employeeData.eid || 'N/A'}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Leave Balance Cards */}
         {leaveBalance && (
@@ -161,16 +358,40 @@ export default function EmployeeDashboard() {
         )}
 
         {/* Main Content Tabs */}
-        <Tabs defaultValue="profile" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="profile">My Profile</TabsTrigger>
-            <TabsTrigger value="check-in">Attendance Check-In</TabsTrigger>
-            <TabsTrigger value="assignments">My Assignments</TabsTrigger>
-            {isAssignmentSupervisor && <TabsTrigger value="supervised-assignments">Supervised Assignments</TabsTrigger>}
-            {isSupervisor && <TabsTrigger value="team-leaves">Team Leaves</TabsTrigger>}
-            <TabsTrigger value="leave-request">Request Leave</TabsTrigger>
-            <TabsTrigger value="attendance">Attendance History</TabsTrigger>
-            <TabsTrigger value="holiday-calendar">Holiday Calendar</TabsTrigger>
+        <Tabs defaultValue="assignments" className="space-y-4">
+          <TabsList className="flex-wrap h-auto">
+            <TabsTrigger value="assignments" className="gap-2">
+              <ListTodo size={16} />
+              My Assignments
+            </TabsTrigger>
+            <TabsTrigger value="check-in" className="gap-2">
+              <CheckCircle size={16} />
+              Attendance Check-In
+            </TabsTrigger>
+            <TabsTrigger value="team-overview" className="gap-2">
+              <Users size={16} />
+              My Team
+            </TabsTrigger>
+            <TabsTrigger value="supervised-assignments" className="gap-2">
+              <ClipboardList size={16} />
+              Supervised Assignments
+            </TabsTrigger>
+            <TabsTrigger value="leave-request" className="gap-2">
+              <FileText size={16} />
+              Request Leave
+            </TabsTrigger>
+            <TabsTrigger value="attendance" className="gap-2">
+              <History size={16} />
+              Attendance History
+            </TabsTrigger>
+            <TabsTrigger value="holiday-calendar" className="gap-2">
+              <PartyPopper size={16} />
+              Holiday Calendar
+            </TabsTrigger>
+            <TabsTrigger value="profile" className="gap-2">
+              <User size={16} />
+              My Profile
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="profile">
@@ -189,6 +410,10 @@ export default function EmployeeDashboard() {
             <AttendanceCheckIn employeeId={employeeData.id} />
           </TabsContent>
 
+          <TabsContent value="team-overview">
+            <TeamOverview managerId={employeeData.id} />
+          </TabsContent>
+
           <TabsContent value="assignments">
             <MyAssignments />
           </TabsContent>
@@ -197,34 +422,23 @@ export default function EmployeeDashboard() {
             <SupervisorAssignmentTeams />
           </TabsContent>
 
-          <TabsContent value="team-leaves">
-            <Card className="border-border">
-              <CardHeader>
-                <CardTitle>Team Leave Requests</CardTitle>
-                <CardDescription>Approve leave requests from your team members</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <SupervisorLeaveRequests 
-                  supervisorId={employeeData.id}
-                  onUpdate={fetchEmployeeData}
-                />
-              </CardContent>
-            </Card>
-          </TabsContent>
-
           <TabsContent value="leave-request">
-            <Card className="border-border">
-              <CardHeader>
-                <CardTitle>Request Leave</CardTitle>
-                <CardDescription>Submit a new leave request</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <LeaveRequestForm 
-                  employeeId={employeeData.id} 
-                  onSuccess={fetchEmployeeData}
-                />
-              </CardContent>
-            </Card>
+            <div className="space-y-6">
+              <Card className="border-border">
+                <CardHeader>
+                  <CardTitle>Request Leave</CardTitle>
+                  <CardDescription>Submit a new leave request</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <LeaveRequestForm 
+                    employeeId={employeeData.id} 
+                    onSuccess={fetchEmployeeData}
+                  />
+                </CardContent>
+              </Card>
+              
+              <LeaveBalanceDisplay employeeId={employeeData.id} />
+            </div>
           </TabsContent>
 
           <TabsContent value="attendance">

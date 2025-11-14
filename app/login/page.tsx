@@ -68,61 +68,76 @@ export default function Login() {
         loginEmail = employeeData.email;
       }
 
-      const response = await fetch('/api/auth/login', {
+      // Import Firebase auth on the client side
+      const { signIn: firebaseSignIn } = await import('@/lib/firebase/auth');
+      
+      // Sign in with Firebase on the client side (this persists auth state in browser)
+      console.log("Signing in with Firebase...");
+      const userCredential = await firebaseSignIn(loginEmail, password);
+      
+      if (!userCredential.user) {
+        throw new Error('Authentication failed');
+      }
+
+      console.log("Firebase sign in successful:", userCredential.user.uid);
+
+      // Get ID token and create session cookie
+      const idToken = await userCredential.user.getIdToken();
+      const sessionResponse = await fetch('/api/auth/session', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: loginEmail,
-          password,
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken }),
       });
 
-      const data = await response.json();
-
-      if (!response.ok || data.error) {
-        throw new Error(data.error?.message || 'Login failed');
+      if (!sessionResponse.ok) {
+        console.error("Failed to create session cookie");
+      } else {
+        console.log("Session cookie created successfully");
       }
 
-      if (!response.ok || data.error) {
-        throw new Error(data.error?.message || 'Login failed');
-      }
+      // Check user role
+      const roleResponse = await fetch(`/api/user-roles/${userCredential.user.uid}`);
+      const roleData = await roleResponse.json();
 
-      if (data.session) {
-        // Check user role
-        const roleResponse = await fetch(`/api/user-roles/${data.session.user.id}`);
-        const roleData = await roleResponse.json();
-
-        if (!roleResponse.ok || roleData.error) {
-          console.error("Role fetch error:", roleData.error);
-          toast({
-            title: "Role not found",
-            description: "Your account doesn't have a role assigned. Please contact your administrator.",
-            variant: "destructive",
-          });
-          await fetch('/api/auth/logout', { method: 'POST' });
-          return;
-        }
-
+      if (!roleResponse.ok || roleData.error) {
+        console.error("Role fetch error:", roleData.error);
         toast({
-          title: "Welcome back!",
-          description: "You have successfully logged in.",
+          title: "Role not found",
+          description: "Your account doesn't have a role assigned. Please contact your administrator.",
+          variant: "destructive",
         });
+        
+        // Sign out on error
+        const { signOut } = await import('@/lib/firebase/auth');
+        await signOut();
+        return;
+      }
 
-        // Navigate based on role
-        if (roleData?.role === "admin") {
-          router.push("/admin");
-        } else if (roleData?.role === "employee") {
-          router.push("/employee");
-        } else {
-          toast({
-            title: "Invalid role",
-            description: "Your account has an invalid role. Please contact your administrator.",
-            variant: "destructive",
-          });
-          await fetch('/api/auth/logout', { method: 'POST' });
-        }
+      console.log("User role:", roleData.role);
+
+      toast({
+        title: "Welcome back!",
+        description: "You have successfully logged in.",
+      });
+
+      // Small delay to ensure Firebase auth state is fully persisted
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Navigate based on role with router.push (no hard redirect needed now)
+      if (roleData?.role === "admin") {
+        console.log("Redirecting to admin dashboard...");
+        router.push("/admin");
+      } else if (roleData?.role === "employee") {
+        console.log("Redirecting to employee dashboard...");
+        router.push("/employee");
+      } else {
+        toast({
+          title: "Invalid role",
+          description: "Your account has an invalid role. Please contact your administrator.",
+          variant: "destructive",
+        });
+        const { signOut } = await import('@/lib/firebase/auth');
+        await signOut();
       }
     } catch (error: any) {
 

@@ -1,7 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
+import { verifyAdminAuth } from '@/lib/firebase/auth-helpers';
+import {
+  calculateMonthlyWorkingDays,
+  calculateLeaveOverlapDays,
+  calculateMonthlySalaryDeductions,
+  determineUnpaidLeaveDays,
+} from '@/lib/working-days-utils';
 
 export async function POST(req: NextRequest) {
+  // Verify admin authentication
+  const { data: authData, error: authError, response: authResponse } = await verifyAdminAuth(req);
+  if (authError || !authData) {
+    return authResponse!;
+  }
+
   try {
     const { month, year } = await req.json();
 
@@ -47,8 +60,24 @@ export async function POST(req: NextRequest) {
       settings[data.config_key] = data.config_value;
     });
 
-    const workingDays = parseInt(settings.working_days_per_month || '30');
     const lateTolerance = parseInt(settings.late_tolerance_count || '3');
+    const casualLeaveLimit = parseInt(settings.annual_casual_leave || '10');
+    const sickLeaveLimit = parseInt(settings.annual_sick_leave || '10');
+
+    // Get all holidays for this year
+    const holidaysSnapshot = await adminDb
+      .collection('holidays')
+      .where('date', '>=', `${year}-01-01`)
+      .where('date', '<=', `${year}-12-31`)
+      .get();
+
+    const holidays = holidaysSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    })) as any[];
+
+    // Calculate actual working days for this month (excluding weekends and holidays)
+    const workingDays = calculateMonthlyWorkingDays(month, year, holidays);
 
     // Calculate date range for the month
     const startDate = new Date(year, month - 1, 1);
@@ -84,7 +113,23 @@ export async function POST(req: NextRequest) {
         }
       });
 
-      // Get leave records for this month
+      // Get employee's leave balances (from previous year or start of year)
+      const leaveBalanceSnapshot = await adminDb
+        .collection('leave_balances')
+        .where('employee_id', '==', employeeId)
+        .where('year', '==', year)
+        .get();
+
+      let casualLeaveBalance = casualLeaveLimit;
+      let sickLeaveBalance = sickLeaveLimit;
+
+      if (!leaveBalanceSnapshot.empty) {
+        const balanceData = leaveBalanceSnapshot.docs[0].data();
+        casualLeaveBalance = balanceData.casual_leave_remaining || casualLeaveLimit;
+        sickLeaveBalance = balanceData.sick_leave_remaining || sickLeaveLimit;
+      }
+
+      // Get leave records for this year (to calculate balance used so far)
       const leaveSnapshot = await adminDb
         .collection('leave_requests')
         .where('employee_id', '==', employeeId)
@@ -102,29 +147,56 @@ export async function POST(req: NextRequest) {
         
         // Check if leave overlaps with current month
         if (leaveStart <= endDate && leaveEnd >= startDate) {
-          const overlapStart = leaveStart > startDate ? leaveStart : startDate;
-          const overlapEnd = leaveEnd < endDate ? leaveEnd : endDate;
-          const daysInMonth = Math.ceil((overlapEnd.getTime() - overlapStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-          
-          if (leave.leave_type === 'casual') {
-            casualLeaveTaken += daysInMonth;
-          } else if (leave.leave_type === 'sick') {
-            sickLeaveTaken += daysInMonth;
-          } else if (leave.leave_type === 'unpaid') {
-            unpaidLeaveDays += daysInMonth;
-          }
+          // Calculate working days in the overlap period (excluding weekends/holidays)
+          const overlapDays = calculateLeaveOverlapDays(
+            leaveStart,
+            leaveEnd,
+            month,
+            year,
+            holidays
+          );
+
+          // Determine if leave should be unpaid based on balances
+          const leaveBreakdown = determineUnpaidLeaveDays(
+            leave.leave_type,
+            overlapDays,
+            casualLeaveBalance,
+            sickLeaveBalance,
+            casualLeaveLimit,
+            sickLeaveLimit
+          );
+
+          casualLeaveTaken += leaveBreakdown.casualDays;
+          sickLeaveTaken += leaveBreakdown.sickDays;
+          unpaidLeaveDays += leaveBreakdown.unpaidDays;
+
+          // Update balances for next iteration
+          casualLeaveBalance -= leaveBreakdown.casualDays;
+          sickLeaveBalance -= leaveBreakdown.sickDays;
         }
       });
 
-      // Calculate deductions
-      const dailyRate = basicSalary / workingDays;
+      // Calculate deductions using working days utils
+      const salaryCalculation = calculateMonthlySalaryDeductions(
+        basicSalary,
+        month,
+        year,
+        holidays,
+        unpaidLeaveDays,
+        lateDays,
+        lateTolerance,
+        true // Use actual working days
+      );
+
+      const dailyRate = salaryCalculation.dailyRate;
       const latePenaltyDays = Math.floor(lateDays / lateTolerance);
-      const latePenalty = latePenaltyDays * dailyRate;
-      const unpaidLeaveDeduction = unpaidLeaveDays * dailyRate;
+      const latePenalty = salaryCalculation.lateArrivalDeduction;
+      const unpaidLeaveDeduction = salaryCalculation.unpaidLeaveDeduction;
       const halfDayDeduction = halfDays * (dailyRate / 2);
       const totalAbsentDays = workingDays - presentDays - halfDays - casualLeaveTaken - sickLeaveTaken - unpaidLeaveDays;
       const absentDeduction = totalAbsentDays > 0 ? totalAbsentDays * dailyRate : 0;
 
+      // Base deductions (automated)
       const totalDeduction = latePenalty + unpaidLeaveDeduction + halfDayDeduction + absentDeduction;
       const netPayable = Math.max(0, basicSalary - totalDeduction);
 
@@ -135,9 +207,14 @@ export async function POST(req: NextRequest) {
         month,
         year,
         basic_salary: basicSalary,
+        festival_bonus: 0, // Can be manually added later
+        loan_deduction: 0, // Can be manually added later
+        lunch_subsidy: 0, // Can be manually added later
+        ait: 0, // Can be manually added later
         total_present_days: presentDays,
         total_absent_days: totalAbsentDays,
         total_late_days: lateDays,
+        total_half_days: halfDays,
         casual_leave_taken: casualLeaveTaken,
         sick_leave_taken: sickLeaveTaken,
         unpaid_leave_days: unpaidLeaveDays,

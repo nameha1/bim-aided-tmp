@@ -1,17 +1,18 @@
 /**
- * MinIO Storage Configuration and Client
- * S3-compatible storage for self-hosted file storage
+ * Storage Configuration and Client
+ * S3-compatible storage (Cloudflare R2)
  */
 
 import * as Minio from 'minio';
 
-// MinIO Configuration from environment variables
+// Storage Configuration from environment variables
+// Now using Cloudflare R2 (S3-compatible)
 const minioConfig = {
-  endPoint: process.env.MINIO_ENDPOINT || 'your-server-ip',
-  port: parseInt(process.env.MINIO_PORT || '9000'),
-  useSSL: process.env.MINIO_USE_SSL === 'true',
-  accessKey: process.env.MINIO_ACCESS_KEY || '',
-  secretKey: process.env.MINIO_SECRET_KEY || '',
+  endPoint: process.env.MINIO_ENDPOINT || process.env.CLOUDFLARE_R2_ENDPOINT?.replace('https://', '') || 'your-server-ip',
+  port: parseInt(process.env.MINIO_PORT || '443'),
+  useSSL: process.env.MINIO_USE_SSL === 'true' || true,
+  accessKey: process.env.MINIO_ACCESS_KEY || process.env.CLOUDFLARE_R2_ACCESS_KEY_ID || '',
+  secretKey: process.env.MINIO_SECRET_KEY || process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY || '',
 };
 
 // Default bucket name
@@ -75,6 +76,13 @@ export function getPublicUrl(
   bucketName: string,
   objectName: string
 ): string {
+  // Use Cloudflare R2 public dev URL if available
+  const publicUrl = process.env.NEXT_PUBLIC_R2_PUBLIC_URL;
+  if (publicUrl) {
+    return `${publicUrl}/${objectName}`;
+  }
+  
+  // Fallback to direct endpoint URL
   const protocol = minioConfig.useSSL ? 'https' : 'http';
   const port = minioConfig.useSSL && minioConfig.port === 443 ? '' : `:${minioConfig.port}`;
   return `${protocol}://${minioConfig.endPoint}${port}/${bucketName}/${objectName}`;

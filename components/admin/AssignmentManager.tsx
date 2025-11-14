@@ -124,10 +124,16 @@ const AssignmentManager = () => {
           // Enrich members with employee details
           const enrichedMembers = await Promise.all(
             (members || []).map(async (member: any) => {
-              const { data: employee } = await getDocument("employees", member.employee_id);
+              const { data: employee, error: empError } = await getDocument("employees", member.employee_id);
+              if (empError) {
+                console.log("Error fetching employee:", member.employee_id, empError);
+              }
+              const employeeName = employee 
+                ? `${employee.first_name || employee.firstName || ''} ${employee.last_name || employee.lastName || ''}`.trim() || employee.name || "Unknown"
+                : "Unknown";
               return {
                 ...member,
-                employee_name: employee?.name || "Unknown",
+                employee_name: employeeName,
                 employee_email: employee?.email || ""
               };
             })
@@ -140,8 +146,8 @@ const AssignmentManager = () => {
             if (supervisorData) {
               supervisor = {
                 id: supervisorData.id,
-                first_name: supervisorData.name?.split(' ')[0] || '',
-                last_name: supervisorData.name?.split(' ').slice(1).join(' ') || '',
+                first_name: supervisorData.first_name || supervisorData.firstName || supervisorData.name?.split(' ')[0] || '',
+                last_name: supervisorData.last_name || supervisorData.lastName || supervisorData.name?.split(' ').slice(1).join(' ') || '',
                 email: supervisorData.email
               };
             }
@@ -173,12 +179,19 @@ const AssignmentManager = () => {
       
       // Filter and sort in JavaScript
       const activeEmployees = (data || [])
-        .filter(emp => emp.status === "active")
-        .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+        .filter((emp: any) => emp.status === "active")
+        .map((emp: any) => {
+          const fullName = `${emp.first_name || emp.firstName || ''} ${emp.last_name || emp.lastName || ''}`.trim() || emp.name || "Unknown";
+          return {
+            ...emp,
+            full_name: fullName
+          };
+        })
+        .sort((a: any, b: any) => a.full_name.localeCompare(b.full_name));
       
-      const employeesWithFullName = activeEmployees.map(emp => ({
+      const employeesWithFullName = activeEmployees.map((emp: any) => ({
         id: emp.id,
-        full_name: emp.name,
+        full_name: emp.full_name,
         email: emp.email,
       }));
       
@@ -217,17 +230,17 @@ const AssignmentManager = () => {
     }
 
     try {
-      // Get session from API instead of client auth
-      const sessionRes = await fetch('/api/auth/session');
-      const sessionData = await sessionRes.json();
+      // Get current user from Firebase auth
+      const { getCurrentUser } = await import('@/lib/firebase/auth');
+      const currentUser = getCurrentUser();
       
-      if (!sessionData.user) {
+      if (!currentUser) {
         throw new Error("User not authenticated");
       }
 
       // Get current employee ID
       const { data: users } = await getDocuments("users", [
-        where("auth_uid", "==", sessionData.user.uid)
+        where("auth_uid", "==", currentUser.uid)
       ]);
       const employeeId = users?.[0]?.employee_id;
 
@@ -323,15 +336,15 @@ const AssignmentManager = () => {
 
   const handleApproveAssignment = async (assignmentId: string) => {
     try {
-      // Get session from API instead of client auth
-      const sessionRes = await fetch('/api/auth/session');
-      const sessionData = await sessionRes.json();
+      // Get current user from Firebase auth
+      const { getCurrentUser } = await import('@/lib/firebase/auth');
+      const currentUser = getCurrentUser();
       
-      if (!sessionData.user) throw new Error("User not authenticated");
+      if (!currentUser) throw new Error("User not authenticated");
 
       // Get current employee ID
       const { data: users } = await getDocuments("users", [
-        where("auth_uid", "==", sessionData.user.uid)
+        where("auth_uid", "==", currentUser.uid)
       ]);
       const employeeId = users?.[0]?.employee_id;
 
@@ -720,9 +733,9 @@ const AssignmentManager = () => {
                         <div className="flex justify-between items-start">
                           <div>
                             <p className="font-semibold">
-                              {member.employees?.first_name} {member.employees?.last_name}
+                              {member.employee_name || "Unknown"}
                             </p>
-                            <p className="text-sm text-muted-foreground">{member.employees?.email}</p>
+                            <p className="text-sm text-muted-foreground">{member.employee_email || ""}</p>
                           </div>
                           <Badge variant="outline">{member.role}</Badge>
                         </div>

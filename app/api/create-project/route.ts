@@ -1,7 +1,14 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createDocument } from '@/lib/firebase/firestore';
+import { verifyAdminAuth } from '@/lib/firebase/auth-helpers';
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+  // Verify admin authentication
+  const { data: authData, error: authError, response: authResponse } = await verifyAdminAuth(req);
+  if (authError || !authData) {
+    return authResponse!;
+  }
+
   try {
     const projectData = await req.json();
 

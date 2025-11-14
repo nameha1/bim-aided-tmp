@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-// TODO: Migrate to Firebase
-import { supabase } from "@/lib/supabase-stub";
+import { getDocuments, createDocument, updateDocument } from "@/lib/firebase/firestore";
+import { where } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { Clock, LogIn, LogOut, MapPin, Calendar } from "lucide-react";
 import { format } from "date-fns";
@@ -30,15 +30,13 @@ const AttendanceCheckIn = ({ employeeId }: AttendanceCheckInProps) => {
       const data = await response.json();
       setUserIp(data.ip);
 
-      // Check if IP is whitelisted
-      const { data: whitelistData, error } = await supabase
-        .from("ip_whitelist")
-        .select("*")
-        .eq("ip_address", data.ip)
-        .eq("is_active", true)
-        .single();
+      // Check if IP is whitelisted in Firebase
+      const { data: whitelistData, error } = await getDocuments("ip_whitelist", [
+        where("ip_address", "==", data.ip),
+        where("is_active", "==", true)
+      ]);
 
-      if (!error && whitelistData) {
+      if (!error && whitelistData && whitelistData.length > 0) {
         setIsWhitelisted(true);
       } else {
         setIsWhitelisted(false);
@@ -50,16 +48,23 @@ const AttendanceCheckIn = ({ employeeId }: AttendanceCheckInProps) => {
   };
 
   const fetchTodayAttendance = async () => {
-    const today = new Date().toISOString().split('T')[0];
-    const { data, error } = await supabase
-      .from("attendance")
-      .select("*")
-      .eq("employee_id", employeeId)
-      .eq("date", today)
-      .single();
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const { data, error } = await getDocuments("attendance", [
+        where("employee_id", "==", employeeId),
+        where("date", "==", today)
+      ]);
 
-    if (data) {
-      setTodayAttendance(data);
+      if (error) {
+        console.error("Error fetching today's attendance:", error);
+        return;
+      }
+
+      if (data && data.length > 0) {
+        setTodayAttendance(data[0]);
+      }
+    } catch (error) {
+      console.error("Error in fetchTodayAttendance:", error);
     }
   };
 
@@ -84,16 +89,17 @@ const AttendanceCheckIn = ({ employeeId }: AttendanceCheckInProps) => {
 
     setLoading(true);
     const today = new Date().toISOString().split('T')[0];
-    const now = new Date().toISOString();
+    const now = new Date();
 
     try {
-      const { error } = await supabase.from("attendance").insert({
+      const { error } = await createDocument("attendance", {
         employee_id: employeeId,
         date: today,
-        check_in_time: now, // Full timestamp with timezone
+        check_in_time: now,
         ip_address: userIp,
         status: "Present",
         manually_added: false,
+        created_at: now,
       });
 
       if (error) throw error;
@@ -119,19 +125,25 @@ const AttendanceCheckIn = ({ employeeId }: AttendanceCheckInProps) => {
     if (!todayAttendance) return;
 
     setLoading(true);
-    const now = new Date().toISOString();
+    const now = new Date();
 
     try {
-      const { error } = await supabase
-        .from("attendance")
-        .update({ check_out_time: now })
-        .eq("id", todayAttendance.id);
+      // Update check-out with current IP (even if not whitelisted)
+      // This allows remote check-out if check-in was done or manual entry exists
+      const { error } = await updateDocument("attendance", todayAttendance.id, {
+        check_out_time: now,
+        check_out_ip: userIp || null,
+        remote_checkout: !isWhitelisted, // Flag if checked out remotely
+        updated_at: now,
+      });
 
       if (error) throw error;
 
       toast({
         title: "Checked Out",
-        description: "You have successfully checked out for today.",
+        description: !isWhitelisted 
+          ? "You have successfully checked out remotely for today."
+          : "You have successfully checked out for today.",
       });
       fetchTodayAttendance();
     } catch (error: any) {
@@ -183,7 +195,9 @@ const AttendanceCheckIn = ({ employeeId }: AttendanceCheckInProps) => {
                   <span className="text-sm font-medium">Check-in Time:</span>
                 </div>
                 <span className="text-sm font-semibold text-green-600">
-                  {format(new Date(todayAttendance.check_in_time), "h:mm a")}
+                  {todayAttendance.check_in_time?.toDate?.()
+                    ? format(todayAttendance.check_in_time.toDate(), "h:mm a")
+                    : format(new Date(todayAttendance.check_in_time), "h:mm a")}
                 </span>
               </div>
 
@@ -194,7 +208,9 @@ const AttendanceCheckIn = ({ employeeId }: AttendanceCheckInProps) => {
                     <span className="text-sm font-medium">Check-out Time:</span>
                   </div>
                   <span className="text-sm font-semibold text-blue-600">
-                    {format(new Date(todayAttendance.check_out_time), "h:mm a")}
+                    {todayAttendance.check_out_time?.toDate?.()
+                      ? format(todayAttendance.check_out_time.toDate(), "h:mm a")
+                      : format(new Date(todayAttendance.check_out_time), "h:mm a")}
                   </span>
                 </div>
               )}
@@ -240,6 +256,14 @@ const AttendanceCheckIn = ({ employeeId }: AttendanceCheckInProps) => {
               </p>
             </div>
           )}
+
+          {!isWhitelisted && isCheckedIn && !isCheckedOut && (
+            <div className="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <p className="text-sm text-blue-700 dark:text-blue-400">
+                ✓ You can check out from any network. Remote check-outs are allowed.
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -249,6 +273,7 @@ const AttendanceCheckIn = ({ employeeId }: AttendanceCheckInProps) => {
           <h4 className="font-semibold mb-2 text-sm">Attendance Guidelines:</h4>
           <ul className="text-xs text-muted-foreground space-y-1">
             <li>• Check-in is only available from authorized networks</li>
+            <li>• Check-out can be done from anywhere (office or remote)</li>
             <li>• Please check in when you arrive at the office</li>
             <li>• Remember to check out before leaving</li>
             <li>• If you forget to check in, contact your admin</li>

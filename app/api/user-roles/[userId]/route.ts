@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDocument } from '@/lib/firebase/firestore';
+import { adminDb } from '@/lib/firebase/admin';
 
 export async function GET(
   request: NextRequest,
@@ -8,18 +8,15 @@ export async function GET(
   try {
     const { userId } = await params;
 
-    // Get user role from Firestore
-    const { data, error } = await getDocument('user_roles', userId);
+    // Get user role from Firestore using Admin SDK
+    const roleDoc = await adminDb.collection('user_roles').doc(userId).get();
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
-
-    if (!data) {
+    if (!roleDoc.exists) {
       return NextResponse.json({ error: 'Role not found' }, { status: 404 });
     }
 
-    return NextResponse.json(data);
+    const roleData = roleDoc.data();
+    return NextResponse.json(roleData);
   } catch (error: any) {
     console.error('Role fetch error:', error);
     return NextResponse.json(

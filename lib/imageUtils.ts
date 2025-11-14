@@ -85,24 +85,26 @@ export const compressImage = async (
 };
 
 /**
- * Upload an image to Supabase storage
+ * Upload an image to R2 storage
  * @param file - The image file to upload
- * @param bucket - The storage bucket name
- * @param path - The path within the bucket
+ * @param folder - The folder name within the bucket (e.g., 'projects', 'uploads')
+ * @param subfolder - Optional subfolder path
  * @returns Promise<string> - Public URL of the uploaded image
  */
 export const uploadImage = async (
   file: File,
-  bucket: string = 'project-images',
-  path: string = ''
+  folder: string = 'projects',
+  subfolder: string = ''
 ): Promise<string> => {
-  console.log('Starting upload:', { fileName: file.name, bucket, path, fileSize: file.size });
+  console.log('Starting upload:', { fileName: file.name, folder, subfolder, fileSize: file.size });
   
-  // Use API route to upload (bypasses RLS)
+  // Construct full folder path
+  const fullFolder = subfolder ? `public/${folder}/${subfolder}` : `public/${folder}`;
+  
+  // Use API route to upload to R2
   const formData = new FormData();
   formData.append('file', file);
-  formData.append('bucket', bucket);
-  formData.append('path', path);
+  formData.append('folder', fullFolder);
 
   const response = await fetch('/api/upload-image', {
     method: 'POST',
@@ -113,9 +115,9 @@ export const uploadImage = async (
 
   if (!response.ok || !result.success) {
     console.error('Upload error:', result);
-    throw new Error(result.error || 'Upload failed');
+    throw new Error(result.message || result.error || 'Upload failed');
   }
 
-  console.log('Upload successful:', result.url);
-  return result.url;
+  console.log('Upload successful:', result.data.url);
+  return result.data.url;
 };

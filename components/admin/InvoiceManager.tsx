@@ -388,7 +388,7 @@ export const InvoiceManager = ({ onInvoiceConverted }: InvoiceManagerProps) => {
             Track invoices payable and receivable
           </p>
         </div>
-        <Button onClick={handleOpenDialog} className="bg-blue-600 hover:bg-blue-700">
+        <Button onClick={handleOpenDialog} className="bg-cyan-500 hover:bg-cyan-600">
           <Plus className="h-4 w-4 mr-2" />
           Add Invoice
         </Button>
@@ -625,7 +625,7 @@ export const InvoiceManager = ({ onInvoiceConverted }: InvoiceManagerProps) => {
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSubmit} className="bg-blue-600 hover:bg-blue-700">
+            <Button onClick={handleSubmit} className="bg-cyan-500 hover:bg-cyan-600">
               {editingInvoice ? "Update" : "Add"} Invoice
             </Button>
           </div>

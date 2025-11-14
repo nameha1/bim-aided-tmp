@@ -19,77 +19,23 @@ const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
 
   useEffect(() => {
     let isMounted = true;
+    let authStateResolved = false;
     
-    // Timeout to prevent infinite loading
-    const timeout = setTimeout(() => {
-      if (isMounted && loading) {
-        console.warn("Auth check timed out");
-        setLoading(false);
-        setAuthChecked(true);
-      }
-    }, 10000); // 10 second timeout
-
-    const checkAuth = async () => {
-      try {
-        console.log("Checking authentication...");
-        const currentUser = getCurrentUser();
-        
-        console.log("Session check result:", { hasUser: !!currentUser });
-        
-        if (!isMounted) return;
-
-        if (currentUser) {
-          console.log("User found, fetching role...");
-          setUser(currentUser);
-
-          // Get user role from API
-          const roleResponse = await fetch(`/api/user-roles/${currentUser.uid}`);
-          const roleData = await roleResponse.json();
-
-          console.log("Role fetch result:", { role: roleData?.role, error: roleData?.error });
-
-          if (!isMounted) return;
-
-          if (roleData.error) {
-            console.error("Error fetching role:", roleData.error);
-            setUserRole(null);
-          } else {
-            setUserRole(roleData?.role || null);
-          }
-        } else {
-          console.log("No user found");
-          setUser(null);
-          setUserRole(null);
-        }
-        
-        if (isMounted) {
-          setLoading(false);
-          setAuthChecked(true);
-          clearTimeout(timeout);
-        }
-      } catch (error) {
-        console.error("Error checking auth:", error);
-        if (isMounted) {
-          setUser(null);
-          setUserRole(null);
-          setLoading(false);
-          setAuthChecked(true);
-          clearTimeout(timeout);
-        }
-      }
-    };
-
-    checkAuth();
-
-    // Listen to auth state changes
+    console.log("ProtectedRoute mounted, waiting for Firebase auth state...");
+    
+    // Listen to auth state changes - this is the PRIMARY source of truth
+    // Firebase will restore the session from indexedDB and trigger this callback
     const unsubscribe = onAuthStateChanged(async (currentUser) => {
       console.log("Auth state changed:", "Has user:", !!currentUser);
       
       if (!isMounted) return;
+      
+      authStateResolved = true;
 
       if (currentUser) {
+        console.log("User authenticated:", currentUser.uid);
         setUser(currentUser);
-        setAuthChecked(true);
+        
         // Fetch role when auth state changes
         try {
           const roleResponse = await fetch(`/api/user-roles/${currentUser.uid}`);
@@ -101,6 +47,7 @@ const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
             console.error("Error fetching role:", roleData.error);
             setUserRole(null);
           } else {
+            console.log("User role:", roleData?.role);
             setUserRole(roleData?.role || null);
           }
         } catch (error) {
@@ -110,11 +57,27 @@ const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
           }
         }
       } else {
+        console.log("No authenticated user");
         setUser(null);
         setUserRole(null);
+      }
+      
+      if (isMounted) {
+        setLoading(false);
         setAuthChecked(true);
       }
     });
+    
+    // Safety timeout - only trigger if onAuthStateChanged never fires
+    const timeout = setTimeout(() => {
+      if (isMounted && !authStateResolved) {
+        console.warn("Auth state never resolved, timing out after 30 seconds");
+        setUser(null);
+        setUserRole(null);
+        setLoading(false);
+        setAuthChecked(true);
+      }
+    }, 30000); // 30 second timeout
 
     return () => {
       isMounted = false;

@@ -35,7 +35,7 @@ export default function AdvancedBIM() {
       icon: Building2,
       title: "Architectural BIM Services",
       description: "Our architectural BIM services empower architects and designers to create detailed 3D building models that enhance design visualization, improve coordination, and streamline the entire design-to-construction workflow. From conceptual design to construction documentation, we ensure your architectural vision is accurately represented in a collaborative BIM environment.",
-      img: "/images/bim-services/freepik__a-modern-architectural-visualization-showing-a-dig__21477.jpeg",
+      img: "/images/advanced-bim/Architectural BIM Services.png",
       strengths: [
         "Parametric modeling for design flexibility",
         "Multi-disciplinary coordination with MEP and structural teams",
@@ -54,7 +54,7 @@ export default function AdvancedBIM() {
       icon: Layers,
       title: "Structural BIM Services",
       description: "We provide structural BIM services that deliver precise modeling of structural systems including concrete, steel, and composite frameworks. Our team ensures that structural integrity is maintained while coordinating seamlessly with architectural and MEP disciplines for clash-free construction.",
-      img: "/images/bim-services/freepik__a-realistic-3d-render-of-a-steel-and-concrete-fram__21478.jpeg",
+      img: "/images/advanced-bim/Structural BIM Services.png",
       strengths: [
         "Detailed reinforcement and steel connection modeling",
         "Structural analysis integration",
@@ -73,7 +73,7 @@ export default function AdvancedBIM() {
       icon: Box,
       title: "MEP BIM Services",
       description: "Our MEP (Mechanical, Electrical, and Plumbing) BIM services cover complete system modeling for HVAC, electrical, plumbing, and fire protection. We create coordinated, clash-free models that optimize space utilization, improve installation efficiency, and support facility management.",
-      img: "/images/bim-services/freepik__mechanical-system-modeling-in-bim-showing-hvac-duc__21479.jpeg",
+      img: "/images/advanced-bim/BIM MEP.jpeg",
       strengths: [
         "Integrated MEP system modeling",
         "Advanced clash detection and resolution",
@@ -92,7 +92,7 @@ export default function AdvancedBIM() {
       icon: TrendingUp,
       title: "Infrastructure BIM Services",
       description: "We deliver infrastructure BIM solutions for roads, bridges, tunnels, railways, and utilities. Our services integrate civil engineering, geospatial data, and BIM workflows to enable better planning, design coordination, and construction execution for large-scale infrastructure projects.",
-      img: "/images/bim-services/freepik__infrastructure-bim-scene-featuring-underground-uti__21483.jpeg",
+      img: "/images/advanced-bim/Infrastructure BIM Services.jpeg",
       strengths: [
         "Civil 3D and Revit integration",
         "Terrain modeling and site analysis",
@@ -111,7 +111,7 @@ export default function AdvancedBIM() {
       icon: Trees,
       title: "Landscape BIM Services",
       description: "Our landscape BIM services bring exterior environments to life with detailed terrain modeling, hardscape and softscape elements, and irrigation systems. We create sustainable and visually stunning outdoor spaces that integrate seamlessly with your building designs.",
-      img: "/images/bim-services/freepik__infrastructure-bim-scene-featuring-underground-uti__21483.jpeg",
+      img: "/images/advanced-bim/Landscape BIM Services.jpeg",
       strengths: [
         "Topographic modeling and grading",
         "Plant species and planting schedules",
@@ -130,7 +130,7 @@ export default function AdvancedBIM() {
       icon: Home,
       title: "Interior Design BIM Services",
       description: "We offer interior design BIM services that transform concepts into detailed 3D models with realistic materials, lighting, and furnishings. Perfect for commercial, residential, and hospitality projects, our services ensure design intent is maintained through to construction.",
-      img: "/images/bim-services/freepik__interior-design-visualization-in-bim-software-show__21484.jpeg",
+      img: "/images/advanced-bim/Interior Design BIM Services.jpeg",
       strengths: [
         "Photorealistic rendering and walkthroughs",
         "Custom millwork and furniture modeling",
@@ -149,7 +149,7 @@ export default function AdvancedBIM() {
       icon: Eye,
       title: "Façade BIM Services",
       description: "Our façade BIM services specialize in the detailed modeling of building envelopes including curtain walls, cladding systems, and glazing. We ensure thermal performance, structural integrity, and aesthetic quality while coordinating with the overall building design.",
-      img: "/images/bim-services/freepik__a-modern-architectural-visualization-showing-a-dig__21477.jpeg",
+      img: "/images/advanced-bim/Facade BIM Services.png",
       strengths: [
         "Parametric façade panel design",
         "Thermal and energy performance analysis",
@@ -168,7 +168,7 @@ export default function AdvancedBIM() {
       icon: Scan,
       title: "Scan to BIM Services",
       description: "We convert laser scan point cloud data into accurate, intelligent BIM models for existing buildings and facilities. Our Scan to BIM services are ideal for renovation, retrofitting, heritage documentation, and facility management projects requiring precise as-built information.",
-      img: "/images/bim-services/freepik__infrastructure-bim-scene-featuring-underground-uti__21483.jpeg",
+      img: "/images/advanced-bim/Scan to BIM Services.jpeg",
       strengths: [
         "High-accuracy point cloud processing",
         "Existing condition modeling and documentation",
@@ -187,7 +187,7 @@ export default function AdvancedBIM() {
       icon: FileText,
       title: "CAD to BIM Services",
       description: "Our CAD to BIM conversion services transform traditional 2D CAD drawings into intelligent 3D BIM models. We help you transition to modern BIM workflows, enabling better collaboration, visualization, and data management throughout the project lifecycle.",
-      img: "/images/bim-services/freepik__plumbing-bim-visualization-showing-water-and-drain__21480.jpeg",
+      img: "/images/advanced-bim/CAD to BIM Services.jpeg",
       strengths: [
         "Accurate conversion from legacy CAD files",
         "Smart object creation with metadata",
@@ -206,7 +206,7 @@ export default function AdvancedBIM() {
       icon: Share2,
       title: "BIM Outsourcing Services",
       description: "We provide comprehensive BIM outsourcing solutions for design firms, contractors, and developers looking to scale their capabilities. Our dedicated teams work as an extension of your organization, delivering high-quality BIM models on time and within budget.",
-      img: "/images/bim-services/freepik__mechanical-system-modeling-in-bim-showing-hvac-duc__21479.jpeg",
+      img: "/images/advanced-bim/BIM Outsourcing Service.jpeg",
       strengths: [
         "Scalable resource allocation",
         "Cost-effective solutions",
@@ -225,7 +225,7 @@ export default function AdvancedBIM() {
       icon: MessageSquare,
       title: "BIM Consulting Services",
       description: "Our BIM consulting services help organizations develop BIM strategies, implement standards, and optimize workflows. From BIM execution planning to staff training, we provide the expertise needed to successfully adopt and leverage BIM technology.",
-      img: "/images/bim-services/freepik__fire-protection-system-in-bim-sprinklers-alarms-an__21482.jpeg",
+      img: "/images/advanced-bim/BIM Consulting Service.png",
       strengths: [
         "Strategic BIM implementation planning",
         "Standards development and documentation",

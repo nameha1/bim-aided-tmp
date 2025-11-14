@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
     const file = formData.get('file') as File;
-    const folder = formData.get('folder') as string || 'public/uploads';
+    const folder = (formData.get('folder') as string) || (formData.get('path') as string) || 'public/uploads';
 
     if (!file) {
       return NextResponse.json(
@@ -60,6 +60,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       message: 'File uploaded successfully',
+      url: data?.url, // Add top-level url for backward compatibility
       data: {
         url: data?.url,
         path: data?.path,

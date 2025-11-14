@@ -4,8 +4,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-// TODO: Migrate to Firebase
-import { supabase } from "@/lib/supabase-stub";
+import { getDocuments, createDocument, updateDocument, deleteDocument } from "@/lib/firebase/firestore";
+import { where, orderBy } from "firebase/firestore";
+import { getCurrentUser } from "@/lib/firebase/auth";
 import { useToast } from "@/hooks/use-toast";
 import { 
   Table, 
@@ -53,7 +54,7 @@ interface IpWhitelist {
   location_name: string | null;
   description: string | null;
   is_active: boolean;
-  created_at: string;
+  created_at: any; // Firebase Timestamp or string
 }
 
 const IPWhitelistManager = () => {
@@ -94,13 +95,12 @@ const IPWhitelistManager = () => {
   const fetchIpList = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("ip_whitelist")
-        .select("*")
-        .order("created_at", { ascending: false });
+      const { data, error } = await getDocuments("ip_whitelist", [
+        orderBy("created_at", "desc")
+      ]);
 
       if (error) throw error;
-      setIpList(data || []);
+      setIpList((data as IpWhitelist[]) || []);
     } catch (error: any) {
       console.error("Error fetching IP list:", error);
       toast({
@@ -131,22 +131,27 @@ const IPWhitelistManager = () => {
     setLoading(true);
 
     try {
-      const { data: userData } = await supabase.auth.getUser();
+      const currentUser = getCurrentUser();
       
-      const { error } = await supabase.from("ip_whitelist").insert({
+      // Check if IP already exists
+      const { data: existing } = await getDocuments("ip_whitelist", [
+        where("ip_address", "==", formData.ip_address)
+      ]);
+
+      if (existing && existing.length > 0) {
+        throw new Error("This IP address is already in the whitelist");
+      }
+
+      const { error } = await createDocument("ip_whitelist", {
         ip_address: formData.ip_address,
         location_name: formData.location_name || null,
         description: formData.description || null,
-        added_by: userData.user?.id,
+        added_by: currentUser?.uid || null,
         is_active: true,
+        created_at: new Date(),
       });
 
-      if (error) {
-        if (error.code === '23505') { // Unique violation
-          throw new Error("This IP address is already in the whitelist");
-        }
-        throw error;
-      }
+      if (error) throw error;
 
       toast({
         title: "IP Added",
@@ -174,10 +179,10 @@ const IPWhitelistManager = () => {
 
   const handleToggleActive = async (id: string, currentStatus: boolean) => {
     try {
-      const { error } = await supabase
-        .from("ip_whitelist")
-        .update({ is_active: !currentStatus })
-        .eq("id", id);
+      const { error } = await updateDocument("ip_whitelist", id, {
+        is_active: !currentStatus,
+        updated_at: new Date(),
+      });
 
       if (error) throw error;
 
@@ -201,10 +206,7 @@ const IPWhitelistManager = () => {
     if (!selectedIp) return;
 
     try {
-      const { error } = await supabase
-        .from("ip_whitelist")
-        .delete()
-        .eq("id", selectedIp);
+      const { error } = await deleteDocument("ip_whitelist", selectedIp);
 
       if (error) throw error;
 
@@ -433,7 +435,11 @@ const IPWhitelistManager = () => {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      {format(new Date(ip.created_at), "MMM d, yyyy")}
+                      {ip.created_at?.toDate?.()
+                        ? format(ip.created_at.toDate(), "MMM d, yyyy")
+                        : typeof ip.created_at === 'string'
+                        ? format(new Date(ip.created_at), "MMM d, yyyy")
+                        : "—"}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex gap-2 justify-end">

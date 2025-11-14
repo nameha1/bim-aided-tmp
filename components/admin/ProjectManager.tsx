@@ -22,11 +22,10 @@ const ProjectManager = () => {
 
   const categories = [
     "Commercial",
-    "Education & Healthcare",
-    "Cultural & Sports",
     "Residential",
-    "Infrastructure & Municipal",
-    "Industrial & Park",
+    "Historical",
+    "Embassy",
+    "Infrastructure",
   ];
 
   const [formData, setFormData] = useState({
@@ -35,6 +34,8 @@ const ProjectManager = () => {
     description: "",
     clientName: "",
     completionDate: "",
+    lod: "",
+    location: "",
     published: true,
   });
   
@@ -68,6 +69,8 @@ const ProjectManager = () => {
       description: "",
       clientName: "",
       completionDate: "",
+      lod: "",
+      location: "",
       published: true,
     });
     setPreviewImage(null);
@@ -82,13 +85,13 @@ const ProjectManager = () => {
     if (!file) return;
 
     try {
-      const compressed = await compressImage(file, 500, 1920);
-      setPreviewImage(compressed);
-      setPreviewUrl(URL.createObjectURL(compressed));
+      // No compression for preview image - upload original
+      setPreviewImage(file);
+      setPreviewUrl(URL.createObjectURL(file));
       
       toast({
         title: "Image ready",
-        description: `Preview image compressed to ${(compressed.size / 1024).toFixed(0)}KB`,
+        description: `Preview image selected (${(file.size / 1024 / 1024).toFixed(2)}MB)`,
       });
     } catch (error) {
       toast({
@@ -104,19 +107,32 @@ const ProjectManager = () => {
     if (!file) return;
 
     try {
-      const compressed = await compressImage(file, 50, 800);
+      const fileSizeMB = file.size / 1024 / 1024;
+      let processedFile = file;
+      
+      // Only compress if file is larger than 2MB - reduce by 25%
+      if (fileSizeMB > 2) {
+        const targetSizeKB = (file.size * 0.75) / 1024; // 75% of original size (25% reduction)
+        processedFile = await compressImage(file, targetSizeKB, 1920);
+        
+        toast({
+          title: "Image optimized",
+          description: `Gallery image ${index + 1} reduced from ${fileSizeMB.toFixed(2)}MB to ${(processedFile.size / 1024 / 1024).toFixed(2)}MB`,
+        });
+      } else {
+        toast({
+          title: "Image ready",
+          description: `Gallery image ${index + 1} (${fileSizeMB.toFixed(2)}MB) - no optimization needed`,
+        });
+      }
+      
       const newGalleryImages = [...galleryImages];
-      newGalleryImages[index] = compressed;
+      newGalleryImages[index] = processedFile;
       setGalleryImages(newGalleryImages);
       
       const newGalleryUrls = [...galleryUrls];
-      newGalleryUrls[index] = URL.createObjectURL(compressed);
+      newGalleryUrls[index] = URL.createObjectURL(processedFile);
       setGalleryUrls(newGalleryUrls);
-      
-      toast({
-        title: "Image ready",
-        description: `Gallery image ${index + 1} compressed to ${(compressed.size / 1024).toFixed(0)}KB`,
-      });
     } catch (error) {
       toast({
         title: "Error",
@@ -153,13 +169,13 @@ const ProjectManager = () => {
 
       // Upload main image if changed
       if (previewImage) {
-        mainImageUrl = await uploadImage(previewImage, 'project-images', 'main/');
+        mainImageUrl = await uploadImage(previewImage, 'projects', 'main');
       }
 
       // Upload gallery images if changed
       for (let i = 0; i < galleryImages.length; i++) {
         if (galleryImages[i]) {
-          galleryImageUrls[i] = await uploadImage(galleryImages[i]!, 'project-images', `gallery/${i + 1}/`);
+          galleryImageUrls[i] = await uploadImage(galleryImages[i]!, 'projects', `gallery-${i + 1}`);
         }
       }
 
@@ -175,6 +191,8 @@ const ProjectManager = () => {
         gallery_image_5: galleryImageUrls[4] || null,
         client_name: formData.clientName || null,
         completion_date: formData.completionDate || null,
+        lod: formData.lod || null,
+        location: formData.location || null,
         published: formData.published,
       } as any;
 
@@ -239,6 +257,8 @@ const ProjectManager = () => {
       description: project.description,
       clientName: project.client_name || "",
       completionDate: project.completion_date || "",
+      lod: project.lod || "",
+      location: project.location || "",
       published: project.published,
     });
     
@@ -353,7 +373,7 @@ const ProjectManager = () => {
 
               {/* Preview Image */}
               <div className="space-y-2">
-                <Label>Preview Image (Max 500KB)</Label>
+                <Label>Preview Image (Original Size)</Label>
                 <div className="flex items-center gap-4">
                   <Input
                     type="file"
@@ -366,13 +386,13 @@ const ProjectManager = () => {
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Upload a preview image. It will be automatically compressed to max 500KB.
+                  Upload a preview image. It will be uploaded in its original size without compression.
                 </p>
               </div>
 
               {/* Gallery Images */}
               <div className="space-y-2">
-                <Label>Gallery Images (Up to 5, max 50KB each)</Label>
+                <Label>Gallery Images (Up to 5, optimized if &gt; 2MB)</Label>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   {[0, 1, 2, 3, 4].map((index) => (
                     <div key={index} className="space-y-2">
@@ -430,6 +450,28 @@ const ProjectManager = () => {
                 </div>
               </div>
 
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="lod">LOD (Level of Development)</Label>
+                  <Input
+                    id="lod"
+                    placeholder="e.g., LOD 300, LOD 400"
+                    value={formData.lod}
+                    onChange={(e) => setFormData({ ...formData, lod: e.target.value })}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="location">Location</Label>
+                  <Input
+                    id="location"
+                    placeholder="e.g., New York, USA"
+                    value={formData.location}
+                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                  />
+                </div>
+              </div>
+
               <div className="flex items-center space-x-2">
                 <input
                   type="checkbox"
@@ -468,6 +510,7 @@ const ProjectManager = () => {
               <TableHead>Title</TableHead>
               <TableHead>Category</TableHead>
               <TableHead>LOD</TableHead>
+              <TableHead>Location</TableHead>
               <TableHead>Client</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Actions</TableHead>
@@ -479,6 +522,7 @@ const ProjectManager = () => {
                 <TableCell className="font-medium">{project.title}</TableCell>
                 <TableCell>{project.category}</TableCell>
                 <TableCell>{project.lod || "N/A"}</TableCell>
+                <TableCell>{project.location || "N/A"}</TableCell>
                 <TableCell>{project.client_name || "N/A"}</TableCell>
                 <TableCell>
                   <Badge variant={project.published ? "default" : "secondary"}>

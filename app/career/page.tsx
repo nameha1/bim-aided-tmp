@@ -69,16 +69,61 @@ export default function Career() {
     <div className="min-h-screen">
       <Navigation />
       
-      {/* Hero Section */}
-      <section className="pt-32 pb-16 bg-gradient-to-b from-secondary to-background">
-        <div className="container mx-auto px-4">
-          <div className="max-w-3xl mx-auto text-center">
-            <h1 className="text-5xl font-bold mb-6">Join Our Team</h1>
-            <p className="text-xl text-muted-foreground">
-              Build your career with a leading BIM services provider
+      {/* Hero Section with Background Image */}
+      <section className="relative pt-32 pb-24 overflow-hidden">
+        {/* Background Image with Overlay */}
+        <div className="absolute inset-0 z-0">
+          <img 
+            src="https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=2000"
+            alt="Modern office workspace"
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-br from-cyan-900/90 via-cyan-800/85 to-blue-900/90" />
+          
+          {/* Animated background pattern */}
+          <div className="absolute inset-0 opacity-10">
+            <div className="absolute inset-0" style={{
+              backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)',
+              backgroundSize: '40px 40px'
+            }} />
+          </div>
+          
+          {/* Floating shapes */}
+          <div className="absolute top-20 left-10 w-64 h-64 bg-cyan-400/20 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-20 right-20 w-96 h-96 bg-blue-400/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+        </div>
+
+        <div className="container mx-auto px-4 relative z-10">
+          <div className="max-w-4xl mx-auto text-center">
+            <div className="inline-block mb-4 px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full border border-white/20">
+              <span className="text-white/90 font-medium">We're Hiring!</span>
+            </div>
+            <h1 className="text-5xl md:text-6xl font-bold mb-6 text-white drop-shadow-lg">
+              Join Our Team
+            </h1>
+            <p className="text-xl md:text-2xl text-white/90 mb-8 leading-relaxed">
+              Build your career with a leading BIM services provider and shape the future of construction technology
             </p>
+            <div className="flex flex-wrap gap-4 justify-center">
+              <div className="flex items-center gap-2 px-5 py-3 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20">
+                <Briefcase className="w-5 h-5 text-cyan-300" />
+                <span className="text-white font-medium">{openings.length}+ Open Positions</span>
+              </div>
+              <div className="flex items-center gap-2 px-5 py-3 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20">
+                <MapPin className="w-5 h-5 text-cyan-300" />
+                <span className="text-white font-medium">Remote & Hybrid Options</span>
+              </div>
+            </div>
           </div>
         </div>
+        
+        {/* Bottom wave decoration */}
+        <div className="absolute bottom-0 left-0 right-0">
+          <svg viewBox="0 0 1440 120" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full">
+            <path d="M0 0L60 10C120 20 240 40 360 46.7C480 53 600 47 720 43.3C840 40 960 40 1080 46.7C1200 53 1320 67 1380 73.3L1440 80V120H1380C1320 120 1200 120 1080 120C960 120 840 120 720 120C600 120 480 120 360 120C240 120 120 120 60 120H0V0Z" fill="white"/>
+          </svg>
+        </div>
+```
       </section>
 
       {/* Why Join Us */}

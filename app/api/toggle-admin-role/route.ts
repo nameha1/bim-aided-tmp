@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase/admin";
+import { verifyAdminAuth } from "@/lib/firebase/auth-helpers";
 
 export async function POST(request: NextRequest) {
+  // Verify admin authentication - only admins can change roles
+  const { data: authData, error: authError, response: authResponse } = await verifyAdminAuth(request);
+  if (authError || !authData) {
+    return authResponse!;
+  }
+
   try {
     const body = await request.json();
     const { authUid, isAdmin } = body;

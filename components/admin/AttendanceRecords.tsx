@@ -17,8 +17,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-// TODO: Migrate to Firebase
-import { supabase } from "@/lib/supabase-stub";
 import { useToast } from "@/hooks/use-toast";
 import { Download, Calendar, Users, Clock } from "lucide-react";
 import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
@@ -44,6 +42,7 @@ const AttendanceRecords = () => {
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [todayRecords, setTodayRecords] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState(false);
+  const [showMonthlyView, setShowMonthlyView] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(new Date());
   const [stats, setStats] = useState({
     total: 0,
@@ -55,32 +54,32 @@ const AttendanceRecords = () => {
 
   useEffect(() => {
     fetchTodayAttendance();
-    fetchAttendanceRecords();
-  }, [selectedMonth]);
+    if (showMonthlyView) {
+      fetchAttendanceRecords();
+    }
+  }, [selectedMonth, showMonthlyView]);
 
   const fetchTodayAttendance = async () => {
     try {
       const today = format(new Date(), "yyyy-MM-dd");
       
-      const { data, error } = await supabase
-        .from("attendance")
-        .select(`
-          id,
-          date,
-          status,
-          check_in_time,
-          check_out_time,
-          total_hours,
-          manually_added,
-          ip_address,
-          employees!attendance_employee_id_fkey(id, first_name, last_name)
-        `)
-        .eq("date", today)
-        .order("check_in_time", { ascending: false });
+      const response = await fetch(`/api/attendance?date=${today}`);
+      const result = await response.json();
 
-      if (error) throw error;
+      if (!response.ok) {
+        throw new Error(result.message || 'Failed to fetch today\'s attendance');
+      }
 
-      setTodayRecords(data as any || []);
+      const data = result.data || [];
+      setTodayRecords(data);
+
+      // Calculate stats from today's records
+      const total = data.length;
+      const present = data.filter((r: any) => r.status === "Present").length;
+      const absent = data.filter((r: any) => r.status === "Absent").length;
+      const leave = data.filter((r: any) => r.status === "Leave").length;
+
+      setStats({ total, present, absent, leave });
     } catch (error: any) {
       console.error("Error fetching today's attendance:", error);
     }
@@ -92,33 +91,21 @@ const AttendanceRecords = () => {
       const startDate = format(startOfMonth(selectedMonth), "yyyy-MM-dd");
       const endDate = format(endOfMonth(selectedMonth), "yyyy-MM-dd");
 
-      const { data, error } = await supabase
-        .from("attendance")
-        .select(`
-          id,
-          date,
-          status,
-          check_in_time,
-          check_out_time,
-          total_hours,
-          manually_added,
-          ip_address,
-          employees!attendance_employee_id_fkey(id, first_name, last_name)
-        `)
-        .gte("date", startDate)
-        .lte("date", endDate)
-        .order("date", { ascending: false })
-        .order("check_in_time", { ascending: false });
+      const response = await fetch(`/api/attendance?start_date=${startDate}&end_date=${endDate}`);
+      const result = await response.json();
 
-      if (error) throw error;
+      if (!response.ok) {
+        throw new Error(result.message || 'Failed to fetch attendance records');
+      }
 
-      setRecords(data as any || []);
+      const data = result.data || [];
+      setRecords(data);
 
       // Calculate stats
-      const total = data?.length || 0;
-      const present = data?.filter((r) => r.status === "Present").length || 0;
-      const absent = data?.filter((r) => r.status === "Absent").length || 0;
-      const leave = data?.filter((r) => r.status === "Leave").length || 0;
+      const total = data.length;
+      const present = data.filter((r: any) => r.status === "Present").length;
+      const absent = data.filter((r: any) => r.status === "Absent").length;
+      const leave = data.filter((r: any) => r.status === "Leave").length;
 
       setStats({ total, present, absent, leave });
     } catch (error: any) {
@@ -244,10 +231,10 @@ const AttendanceRecords = () => {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">On Leave</CardTitle>
-            <Calendar className="h-4 w-4 text-blue-600" />
+            <Calendar className="h-4 w-4 text-cyan-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{stats.leave}</div>
+            <div className="text-2xl font-bold text-cyan-500">{stats.leave}</div>
           </CardContent>
         </Card>
       </div>
@@ -283,7 +270,10 @@ const AttendanceRecords = () => {
                     <TableCell>
                       <div>
                         <p className="font-medium">
-                          {record.employees?.first_name} {record.employees?.last_name}
+                          {record.employees 
+                            ? `${record.employees.first_name || ''} ${record.employees.last_name || ''}`.trim() 
+                            : <span className="text-muted-foreground italic">Unknown Employee</span>
+                          }
                         </p>
                       </div>
                     </TableCell>
@@ -317,42 +307,50 @@ const AttendanceRecords = () => {
       </Card>
 
       {/* Monthly Attendance Records */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Attendance Records</CardTitle>
-              <CardDescription>
-                View and export monthly attendance data
-              </CardDescription>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleMonthChange("prev")}
-              >
-                Previous
-              </Button>
-              <div className="px-4 py-2 bg-muted rounded-md text-sm font-medium">
-                {format(selectedMonth, "MMMM yyyy")}
+      {showMonthlyView && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Attendance Records</CardTitle>
+                <CardDescription>
+                  View and export monthly attendance data
+                </CardDescription>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleMonthChange("next")}
-                disabled={selectedMonth >= new Date()}
-              >
-                Next
-              </Button>
-              <Button onClick={exportToExcel} disabled={records.length === 0}>
-                <Download className="mr-2" size={16} />
-                Export Excel
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowMonthlyView(false)}
+                >
+                  Back to Today
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleMonthChange("prev")}
+                >
+                  Previous
+                </Button>
+                <div className="px-4 py-2 bg-muted rounded-md text-sm font-medium">
+                  {format(selectedMonth, "MMMM yyyy")}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleMonthChange("next")}
+                  disabled={selectedMonth >= new Date()}
+                >
+                  Next
+                </Button>
+                <Button onClick={exportToExcel} disabled={records.length === 0}>
+                  <Download className="mr-2" size={16} />
+                  Export Excel
+                </Button>
+              </div>
             </div>
-          </div>
-        </CardHeader>
-        <CardContent>
+          </CardHeader>
+          <CardContent>
           {loading ? (
             <div className="text-center py-8 text-muted-foreground">
               Loading attendance records...
@@ -382,7 +380,10 @@ const AttendanceRecords = () => {
                     <TableCell>
                       <div>
                         <p className="font-medium">
-                          {record.employees?.first_name} {record.employees?.last_name}
+                          {record.employees 
+                            ? `${record.employees.first_name || ''} ${record.employees.last_name || ''}`.trim() 
+                            : <span className="text-muted-foreground italic">Unknown Employee</span>
+                          }
                         </p>
                       </div>
                     </TableCell>
@@ -419,6 +420,21 @@ const AttendanceRecords = () => {
           )}
         </CardContent>
       </Card>
+      )}
+
+      {/* Button to view other dates */}
+      {!showMonthlyView && (
+        <div className="text-center">
+          <Button 
+            onClick={() => setShowMonthlyView(true)} 
+            variant="outline"
+            size="lg"
+          >
+            <Calendar className="mr-2" size={16} />
+            View Other Dates
+          </Button>
+        </div>
+      )}
     </div>
   );
 };

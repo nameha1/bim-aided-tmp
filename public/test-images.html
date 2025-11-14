@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Image Test - Advanced BIM</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .image-test { margin: 20px 0; padding: 10px; border: 1px solid #ccc; }
+        img { max-width: 300px; height: auto; display: block; margin: 10px 0; }
+        .status { font-weight: bold; }
+        .success { color: green; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <h1>Advanced BIM Images Test</h1>
+    <div id="results"></div>
+
+    <script>
+        const images = [
+            "/images/advanced-bim/Architectural BIM Services.png",
+            "/images/advanced-bim/Structural BIM Services.png",
+            "/images/advanced-bim/BIM MEP.jpeg",
+            "/images/advanced-bim/Infrastructure BIM Services.jpeg",
+            "/images/advanced-bim/Landscape BIM Services.jpeg",
+            "/images/advanced-bim/Interior Design BIM Services.jpeg",
+            "/images/advanced-bim/Facade BIM Services.png",
+            "/images/advanced-bim/Scan to BIM Services.jpeg",
+            "/images/advanced-bim/CAD to BIM Services.jpeg",
+            "/images/advanced-bim/BIM Outsourcing Service.jpeg",
+            "/images/advanced-bim/BIM Consulting Service.png"
+        ];
+
+        const resultsDiv = document.getElementById('results');
+
+        images.forEach((src, index) => {
+            const div = document.createElement('div');
+            div.className = 'image-test';
+            
+            const title = document.createElement('h3');
+            title.textContent = `Image ${index + 1}: ${src.split('/').pop()}`;
+            div.appendChild(title);
+
+            const status = document.createElement('div');
+            status.className = 'status';
+            status.textContent = 'Loading...';
+            div.appendChild(status);
+
+            const img = document.createElement('img');
+            img.src = src;
+            
+            img.onload = () => {
+                status.textContent = '✅ Loaded Successfully';
+                status.className = 'status success';
+            };
+            
+            img.onerror = () => {
+                status.textContent = '❌ Failed to Load';
+                status.className = 'status error';
+            };
+            
+            div.appendChild(img);
+            resultsDiv.appendChild(div);
+        });
+    </script>
+</body>
+</html>

@@ -6,10 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Users, UserPlus, Calendar, LogOut, Briefcase, ClipboardList, Globe, DollarSign, Menu, X } from "lucide-react";
+import { Users, UserPlus, Calendar, LogOut, Briefcase, ClipboardList, Globe, DollarSign, Menu, X, FileText, Settings, Clock } from "lucide-react";
 import AddEmployeeForm from "@/components/admin/AddEmployeeForm";
 import EmployeeList from "@/components/admin/EmployeeList";
 import LeaveRequests from "@/components/admin/LeaveRequests";
+import LeavePolicyManager from "@/components/admin/LeavePolicyManager";
+import AttendancePolicyManager from "@/components/admin/AttendancePolicyManager";
+import HolidayManager from "@/components/admin/HolidayManager";
 import ProjectManager from "@/components/admin/ProjectManager";
 import CareerManager from "@/components/admin/CareerManager";
 import ApplicationManager from "@/components/admin/ApplicationManager";
@@ -20,6 +23,7 @@ import AttendanceRecords from "@/components/admin/AttendanceRecords";
 import ContactInquiriesManager from "@/components/admin/ContactInquiriesManager";
 import PayrollManager from "@/components/admin/PayrollManager";
 import { TransactionManager } from "@/components/admin/TransactionManager";
+import InvoiceTabView from "@/components/admin/InvoiceTabView";
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("employees");
@@ -31,12 +35,33 @@ export default function AdminDashboard() {
     totalApplications: 0,
   });
   const [refreshKey, setRefreshKey] = useState(0);
+  const [isAuthReady, setIsAuthReady] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
 
+  // Wait for auth to be ready before fetching data
   useEffect(() => {
-    fetchStats();
-  }, [refreshKey]);
+    const checkAuth = async () => {
+      try {
+        const { getCurrentUser } = await import("@/lib/firebase/auth");
+        const user = getCurrentUser();
+        if (user) {
+          setIsAuthReady(true);
+        }
+      } catch (error) {
+        console.error("Auth check error:", error);
+      }
+    };
+    
+    const timer = setTimeout(checkAuth, 1000); // Wait 1 second for auth to initialize
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (isAuthReady) {
+      fetchStats();
+    }
+  }, [refreshKey, isAuthReady]);
 
   const fetchStats = async () => {
     try {
@@ -54,9 +79,9 @@ export default function AdminDashboard() {
       ]);
       const activeEmployees = activeEmps?.length || 0;
 
-      // Fetch pending leave requests
+      // Fetch pending leave requests (only those needing admin approval)
       const { data: pendingLeavesData } = await getDocuments("leave_requests", [
-        where("status", "==", "pending")
+        where("status", "==", "pending_admin")
       ]);
       const pendingLeaves = pendingLeavesData?.length || 0;
 
@@ -101,15 +126,15 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 overflow-x-hidden max-w-[100vw]">
       {/* Header with Logo */}
-      <header className="border-b bg-white dark:bg-slate-900 shadow-sm sticky top-0 z-50">
-        <div className="container mx-auto px-4 md:px-6 py-3 md:py-4 flex items-center justify-between">
+      <header className="border-b bg-white dark:bg-slate-900 shadow-sm sticky top-0 z-50 w-full max-w-[100vw] overflow-x-hidden">
+        <div className="w-full max-w-full px-4 md:px-6 py-3 md:py-4 flex items-center justify-between">
           {/* Mobile Menu Button */}
           <Button
             variant="ghost"
             size="icon"
-            className="md:hidden"
+            className="md:hidden flex-shrink-0"
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
           >
             {isSidebarOpen ? <X size={24} /> : <Menu size={24} />}
@@ -118,19 +143,19 @@ export default function AdminDashboard() {
           {/* Company Logo - Center on mobile, left on desktop */}
           <img 
             src="/Logo-BIMaided.png" 
-            alt="BIMaided Logo" 
-            className="h-8 md:h-12 w-auto"
+            alt="BIM aided Logo" 
+            className="h-10 md:h-14 w-auto object-contain flex-shrink-0"
           />
           
           {/* Logout Button - Right side */}
-          <Button variant="outline" onClick={handleLogout} size="sm" className="md:size-default">
+          <Button variant="outline" onClick={handleLogout} size="sm" className="md:size-default flex-shrink-0">
             <LogOut size={16} className="md:mr-2" />
             <span className="hidden md:inline">Logout</span>
           </Button>
         </div>
       </header>
 
-      <div className="flex relative">
+      <div className="flex relative overflow-x-hidden w-full max-w-[100vw]">
         {/* Mobile Overlay */}
         {isSidebarOpen && (
           <div 
@@ -141,12 +166,10 @@ export default function AdminDashboard() {
 
         {/* Sidebar Navigation */}
         <aside className={`
-          fixed md:sticky top-[57px] md:top-[73px] left-0
-          w-64 min-h-[calc(100vh-57px)] md:min-h-[calc(100vh-73px)]
+          ${isSidebarOpen ? 'fixed' : 'hidden md:block md:sticky'} top-0 left-0
+          w-64 min-h-screen md:min-h-[calc(100vh-73px)] md:max-h-[calc(100vh-73px)]
           bg-white dark:bg-slate-900 border-r
-          transform transition-transform duration-300 ease-in-out
-          z-40 overflow-y-auto
-          ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+          z-40 overflow-y-auto flex-shrink-0
         `}>
           <div className="p-4 space-y-6">
             {/* HR Section */}
@@ -155,7 +178,7 @@ export default function AdminDashboard() {
               <nav className="space-y-1">
                 <Button
                   variant={activeTab === "employees" ? "default" : "ghost"}
-                  className={`w-full justify-start gap-3 ${activeTab === "employees" ? "bg-blue-600 text-white hover:bg-blue-700" : "hover:bg-slate-100 dark:hover:bg-slate-800"}`}
+                  className={`w-full justify-start gap-3 ${activeTab === "employees" ? "bg-cyan-500 text-white hover:bg-cyan-600" : "hover:bg-cyan-50 hover:text-cyan-700 dark:hover:bg-slate-800"}`}
                   onClick={() => {
                     setActiveTab("employees");
                     setIsSidebarOpen(false);
@@ -166,7 +189,7 @@ export default function AdminDashboard() {
                 </Button>
                 <Button
                   variant={activeTab === "add-employee" ? "default" : "ghost"}
-                  className={`w-full justify-start gap-3 ${activeTab === "add-employee" ? "bg-blue-600 text-white hover:bg-blue-700" : "hover:bg-slate-100 dark:hover:bg-slate-800"}`}
+                  className={`w-full justify-start gap-3 ${activeTab === "add-employee" ? "bg-cyan-500 text-white hover:bg-cyan-600" : "hover:bg-cyan-50 hover:text-cyan-700 dark:hover:bg-slate-800"}`}
                   onClick={() => {
                     setActiveTab("add-employee");
                     setIsSidebarOpen(false);
@@ -177,7 +200,7 @@ export default function AdminDashboard() {
                 </Button>
                 <Button
                   variant={activeTab === "attendance" ? "default" : "ghost"}
-                  className={`w-full justify-start gap-3 ${activeTab === "attendance" ? "bg-blue-600 text-white hover:bg-blue-700" : "hover:bg-slate-100 dark:hover:bg-slate-800"}`}
+                  className={`w-full justify-start gap-3 ${activeTab === "attendance" ? "bg-cyan-500 text-white hover:bg-cyan-600" : "hover:bg-cyan-50 hover:text-cyan-700 dark:hover:bg-slate-800"}`}
                   onClick={() => {
                     setActiveTab("attendance");
                     setIsSidebarOpen(false);
@@ -188,7 +211,7 @@ export default function AdminDashboard() {
                 </Button>
                 <Button
                   variant={activeTab === "leave-requests" ? "default" : "ghost"}
-                  className={`w-full justify-start gap-3 ${activeTab === "leave-requests" ? "bg-blue-600 text-white hover:bg-blue-700" : "hover:bg-slate-100 dark:hover:bg-slate-800"}`}
+                  className={`w-full justify-start gap-3 ${activeTab === "leave-requests" ? "bg-cyan-500 text-white hover:bg-cyan-600" : "hover:bg-cyan-50 hover:text-cyan-700 dark:hover:bg-slate-800"}`}
                   onClick={() => {
                     setActiveTab("leave-requests");
                     setIsSidebarOpen(false);
@@ -196,6 +219,39 @@ export default function AdminDashboard() {
                 >
                   <Calendar size={18} />
                   <span>Leave Requests</span>
+                </Button>
+                <Button
+                  variant={activeTab === "leave-policies" ? "default" : "ghost"}
+                  className={`w-full justify-start gap-3 ${activeTab === "leave-policies" ? "bg-cyan-500 text-white hover:bg-cyan-600" : "hover:bg-cyan-50 hover:text-cyan-700 dark:hover:bg-slate-800"}`}
+                  onClick={() => {
+                    setActiveTab("leave-policies");
+                    setIsSidebarOpen(false);
+                  }}
+                >
+                  <Settings size={18} />
+                  <span>Leave Policies</span>
+                </Button>
+                <Button
+                  variant={activeTab === "attendance-policy" ? "default" : "ghost"}
+                  className={`w-full justify-start gap-3 ${activeTab === "attendance-policy" ? "bg-cyan-500 text-white hover:bg-cyan-600" : "hover:bg-cyan-50 hover:text-cyan-700 dark:hover:bg-slate-800"}`}
+                  onClick={() => {
+                    setActiveTab("attendance-policy");
+                    setIsSidebarOpen(false);
+                  }}
+                >
+                  <Clock size={18} />
+                  <span>Attendance Policy</span>
+                </Button>
+                <Button
+                  variant={activeTab === "holidays" ? "default" : "ghost"}
+                  className={`w-full justify-start gap-3 ${activeTab === "holidays" ? "bg-cyan-500 text-white hover:bg-cyan-600" : "hover:bg-cyan-50 hover:text-cyan-700 dark:hover:bg-slate-800"}`}
+                  onClick={() => {
+                    setActiveTab("holidays");
+                    setIsSidebarOpen(false);
+                  }}
+                >
+                  <Calendar size={18} />
+                  <span>Holidays</span>
                 </Button>
               </nav>
             </div>
@@ -206,7 +262,7 @@ export default function AdminDashboard() {
               <nav className="space-y-1">
                 <Button
                   variant={activeTab === "payroll" ? "default" : "ghost"}
-                  className={`w-full justify-start gap-3 ${activeTab === "payroll" ? "bg-blue-600 text-white hover:bg-blue-700" : "hover:bg-slate-100 dark:hover:bg-slate-800"}`}
+                  className={`w-full justify-start gap-3 ${activeTab === "payroll" ? "bg-cyan-500 text-white hover:bg-cyan-600" : "hover:bg-cyan-50 hover:text-cyan-700 dark:hover:bg-slate-800"}`}
                   onClick={() => {
                     setActiveTab("payroll");
                     setIsSidebarOpen(false);
@@ -217,7 +273,7 @@ export default function AdminDashboard() {
                 </Button>
                 <Button
                   variant={activeTab === "transactions" ? "default" : "ghost"}
-                  className={`w-full justify-start gap-3 ${activeTab === "transactions" ? "bg-blue-600 text-white hover:bg-blue-700" : "hover:bg-slate-100 dark:hover:bg-slate-800"}`}
+                  className={`w-full justify-start gap-3 ${activeTab === "transactions" ? "bg-cyan-500 text-white hover:bg-cyan-600" : "hover:bg-cyan-50 hover:text-cyan-700 dark:hover:bg-slate-800"}`}
                   onClick={() => {
                     setActiveTab("transactions");
                     setIsSidebarOpen(false);
@@ -225,6 +281,17 @@ export default function AdminDashboard() {
                 >
                   <DollarSign size={18} />
                   <span>Transactions</span>
+                </Button>
+                <Button
+                  variant={activeTab === "invoices" ? "default" : "ghost"}
+                  className={`w-full justify-start gap-3 ${activeTab === "invoices" ? "bg-cyan-500 text-white hover:bg-cyan-600" : "hover:bg-cyan-50 hover:text-cyan-700 dark:hover:bg-slate-800"}`}
+                  onClick={() => {
+                    setActiveTab("invoices");
+                    setIsSidebarOpen(false);
+                  }}
+                >
+                  <FileText size={18} />
+                  <span>Invoices</span>
                 </Button>
               </nav>
             </div>
@@ -235,7 +302,7 @@ export default function AdminDashboard() {
               <nav className="space-y-1">
                 <Button
                   variant={activeTab === "projects" ? "default" : "ghost"}
-                  className={`w-full justify-start gap-3 ${activeTab === "projects" ? "bg-blue-600 text-white hover:bg-blue-700" : "hover:bg-slate-100 dark:hover:bg-slate-800"}`}
+                  className={`w-full justify-start gap-3 ${activeTab === "projects" ? "bg-cyan-500 text-white hover:bg-cyan-600" : "hover:bg-cyan-50 hover:text-cyan-700 dark:hover:bg-slate-800"}`}
                   onClick={() => {
                     setActiveTab("projects");
                     setIsSidebarOpen(false);
@@ -246,7 +313,7 @@ export default function AdminDashboard() {
                 </Button>
                 <Button
                   variant={activeTab === "assignments" ? "default" : "ghost"}
-                  className={`w-full justify-start gap-3 ${activeTab === "assignments" ? "bg-blue-600 text-white hover:bg-blue-700" : "hover:bg-slate-100 dark:hover:bg-slate-800"}`}
+                  className={`w-full justify-start gap-3 ${activeTab === "assignments" ? "bg-cyan-500 text-white hover:bg-cyan-600" : "hover:bg-cyan-50 hover:text-cyan-700 dark:hover:bg-slate-800"}`}
                   onClick={() => {
                     setActiveTab("assignments");
                     setIsSidebarOpen(false);
@@ -264,7 +331,7 @@ export default function AdminDashboard() {
               <nav className="space-y-1">
                 <Button
                   variant={activeTab === "careers" ? "default" : "ghost"}
-                  className={`w-full justify-start gap-3 ${activeTab === "careers" ? "bg-blue-600 text-white hover:bg-blue-700" : "hover:bg-slate-100 dark:hover:bg-slate-800"}`}
+                  className={`w-full justify-start gap-3 ${activeTab === "careers" ? "bg-cyan-500 text-white hover:bg-cyan-600" : "hover:bg-cyan-50 hover:text-cyan-700 dark:hover:bg-slate-800"}`}
                   onClick={() => {
                     setActiveTab("careers");
                     setIsSidebarOpen(false);
@@ -275,7 +342,7 @@ export default function AdminDashboard() {
                 </Button>
                 <Button
                   variant={activeTab === "applications" ? "default" : "ghost"}
-                  className={`w-full justify-start gap-3 ${activeTab === "applications" ? "bg-blue-600 text-white hover:bg-blue-700" : "hover:bg-slate-100 dark:hover:bg-slate-800"}`}
+                  className={`w-full justify-start gap-3 ${activeTab === "applications" ? "bg-cyan-500 text-white hover:bg-cyan-600" : "hover:bg-cyan-50 hover:text-cyan-700 dark:hover:bg-slate-800"}`}
                   onClick={() => {
                     setActiveTab("applications");
                     setIsSidebarOpen(false);
@@ -293,7 +360,7 @@ export default function AdminDashboard() {
               <nav className="space-y-1">
                 <Button
                   variant={activeTab === "contact-inquiries" ? "default" : "ghost"}
-                  className={`w-full justify-start gap-3 ${activeTab === "contact-inquiries" ? "bg-blue-600 text-white hover:bg-blue-700" : "hover:bg-slate-100 dark:hover:bg-slate-800"}`}
+                  className={`w-full justify-start gap-3 ${activeTab === "contact-inquiries" ? "bg-cyan-500 text-white hover:bg-cyan-600" : "hover:bg-cyan-50 hover:text-cyan-700 dark:hover:bg-slate-800"}`}
                   onClick={() => {
                     setActiveTab("contact-inquiries");
                     setIsSidebarOpen(false);
@@ -311,7 +378,7 @@ export default function AdminDashboard() {
               <nav className="space-y-1">
                 <Button
                   variant={activeTab === "ip-whitelist" ? "default" : "ghost"}
-                  className={`w-full justify-start gap-3 ${activeTab === "ip-whitelist" ? "bg-blue-600 text-white hover:bg-blue-700" : "hover:bg-slate-100 dark:hover:bg-slate-800"}`}
+                  className={`w-full justify-start gap-3 ${activeTab === "ip-whitelist" ? "bg-cyan-500 text-white hover:bg-cyan-600" : "hover:bg-cyan-50 hover:text-cyan-700 dark:hover:bg-slate-800"}`}
                   onClick={() => {
                     setActiveTab("ip-whitelist");
                     setIsSidebarOpen(false);
@@ -326,7 +393,7 @@ export default function AdminDashboard() {
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 p-3 md:p-6 md:ml-0">
+        <main className="flex-1 p-3 md:p-6 md:ml-0 overflow-x-hidden min-w-0">
           {/* Stats Cards - Only show for first 5 tabs */}
           {["employees", "add-employee", "attendance", "payroll", "leave-requests"].includes(activeTab) && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 mb-6 md:mb-8">
@@ -334,11 +401,11 @@ export default function AdminDashboard() {
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4 md:p-6">
                 <CardTitle className="text-xs md:text-sm font-medium text-muted-foreground">Total Employees</CardTitle>
                 <div className="p-1.5 md:p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                  <Users className="text-blue-600" size={16} />
+                  <Users className="text-cyan-500" size={16} />
                 </div>
               </CardHeader>
               <CardContent className="p-4 md:p-6 pt-0">
-                <div className="text-2xl md:text-3xl font-bold text-blue-600">
+                <div className="text-2xl md:text-3xl font-bold text-cyan-500">
                   {stats.totalEmployees}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">Registered in system</p>
@@ -349,11 +416,11 @@ export default function AdminDashboard() {
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4 md:p-6">
                 <CardTitle className="text-xs md:text-sm font-medium text-muted-foreground">Active Employees</CardTitle>
                 <div className="p-1.5 md:p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                  <UserPlus className="text-blue-600" size={16} />
+                  <UserPlus className="text-cyan-500" size={16} />
                 </div>
               </CardHeader>
               <CardContent className="p-4 md:p-6 pt-0">
-                <div className="text-2xl md:text-3xl font-bold text-blue-600">
+                <div className="text-2xl md:text-3xl font-bold text-cyan-500">
                   {stats.activeEmployees}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">Currently working</p>
@@ -364,11 +431,11 @@ export default function AdminDashboard() {
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4 md:p-6">
                 <CardTitle className="text-xs md:text-sm font-medium text-muted-foreground">Pending Leaves</CardTitle>
                 <div className="p-1.5 md:p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                  <Calendar className="text-blue-600" size={16} />
+                  <Calendar className="text-cyan-500" size={16} />
                 </div>
               </CardHeader>
             <CardContent className="p-4 md:p-6 pt-0">
-              <div className="text-2xl md:text-3xl font-bold text-blue-600">
+              <div className="text-2xl md:text-3xl font-bold text-cyan-500">
                 {stats.pendingLeaves}
               </div>
               <p className="text-xs text-muted-foreground mt-1">Awaiting approval</p>
@@ -379,11 +446,11 @@ export default function AdminDashboard() {
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4 md:p-6">
               <CardTitle className="text-xs md:text-sm font-medium text-muted-foreground">Job Applications</CardTitle>
               <div className="p-1.5 md:p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                <Briefcase className="text-blue-600" size={16} />
+                <Briefcase className="text-cyan-500" size={16} />
               </div>
             </CardHeader>
             <CardContent className="p-4 md:p-6 pt-0">
-              <div className="text-2xl md:text-3xl font-bold text-blue-600">
+              <div className="text-2xl md:text-3xl font-bold text-cyan-500">
                 {stats.totalApplications}
               </div>
               <p className="text-xs text-muted-foreground mt-1">Total submissions</p>
@@ -401,6 +468,9 @@ export default function AdminDashboard() {
             <TabsTrigger value="payroll">Payroll</TabsTrigger>
             <TabsTrigger value="ip-whitelist">IP Whitelist</TabsTrigger>
             <TabsTrigger value="leave-requests">Leave Requests</TabsTrigger>
+            <TabsTrigger value="leave-policies">Leave Policies</TabsTrigger>
+            <TabsTrigger value="attendance-policy">Attendance Policy</TabsTrigger>
+            <TabsTrigger value="holidays">Holiday Management</TabsTrigger>
             <TabsTrigger value="assignments">Assignments</TabsTrigger>
             <TabsTrigger value="projects">Projects</TabsTrigger>
             <TabsTrigger value="careers">Career Postings</TabsTrigger>
@@ -412,7 +482,7 @@ export default function AdminDashboard() {
             <Card>
               <CardHeader className="border-b">
                 <CardTitle className="flex items-center gap-2">
-                  <Users className="text-blue-600" size={24} />
+                  <Users className="text-cyan-500" size={24} />
                   Employee List
                 </CardTitle>
                 <CardDescription>Manage your organization's employees</CardDescription>
@@ -427,7 +497,7 @@ export default function AdminDashboard() {
             <Card>
               <CardHeader className="border-b">
                 <CardTitle className="flex items-center gap-2">
-                  <UserPlus className="text-blue-600" size={24} />
+                  <UserPlus className="text-cyan-500" size={24} />
                   Add New Employee
                 </CardTitle>
                 <CardDescription>Create a new employee account</CardDescription>
@@ -443,7 +513,7 @@ export default function AdminDashboard() {
               <CardHeader className="flex flex-row items-center justify-between border-b">
                 <div>
                   <CardTitle className="flex items-center gap-2">
-                    <Calendar className="text-blue-600" size={24} />
+                    <Calendar className="text-cyan-500" size={24} />
                     Attendance Management
                   </CardTitle>
                   <CardDescription>View and manage employee attendance records</CardDescription>
@@ -468,13 +538,58 @@ export default function AdminDashboard() {
             <Card>
               <CardHeader className="border-b">
                 <CardTitle className="flex items-center gap-2">
-                  <Calendar className="text-blue-600" size={24} />
+                  <Calendar className="text-cyan-500" size={24} />
                   Leave Requests
                 </CardTitle>
                 <CardDescription>Review and approve employee leave requests</CardDescription>
               </CardHeader>
               <CardContent className="pt-6">
                 <LeaveRequests onUpdate={fetchStats} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="leave-policies">
+            <Card>
+              <CardHeader className="border-b">
+                <CardTitle className="flex items-center gap-2">
+                  <Settings className="text-cyan-500" size={24} />
+                  Leave Policies Configuration
+                </CardTitle>
+                <CardDescription>Define leave types, allowances, and salary impact rules</CardDescription>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <LeavePolicyManager />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="attendance-policy">
+            <Card>
+              <CardHeader className="border-b">
+                <CardTitle className="flex items-center gap-2">
+                  <Clock className="text-cyan-500" size={24} />
+                  Attendance Policy Configuration
+                </CardTitle>
+                <CardDescription>Configure office hours, grace periods, and late arrival penalties</CardDescription>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <AttendancePolicyManager />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="holidays">
+            <Card>
+              <CardHeader className="border-b">
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="text-cyan-500" size={24} />
+                  Holiday Management
+                </CardTitle>
+                <CardDescription>Configure holidays and government off days that affect working days calculation</CardDescription>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <HolidayManager />
               </CardContent>
             </Card>
           </TabsContent>
@@ -487,7 +602,7 @@ export default function AdminDashboard() {
             <Card>
               <CardHeader className="border-b">
                 <CardTitle className="flex items-center gap-2">
-                  <Briefcase className="text-blue-600" size={24} />
+                  <Briefcase className="text-cyan-500" size={24} />
                   Project Management
                 </CardTitle>
                 <CardDescription>Add and manage projects for the website portfolio</CardDescription>
@@ -502,7 +617,7 @@ export default function AdminDashboard() {
             <Card>
               <CardHeader className="border-b">
                 <CardTitle className="flex items-center gap-2">
-                  <Briefcase className="text-blue-600" size={24} />
+                  <Briefcase className="text-cyan-500" size={24} />
                   Career Postings
                 </CardTitle>
                 <CardDescription>Manage job openings on the careers page</CardDescription>
@@ -521,7 +636,7 @@ export default function AdminDashboard() {
             <Card>
               <CardHeader className="border-b">
                 <CardTitle className="flex items-center gap-2">
-                  <ClipboardList className="text-blue-600" size={24} />
+                  <ClipboardList className="text-cyan-500" size={24} />
                   Contact Form Inquiries
                 </CardTitle>
                 <CardDescription>Manage and respond to website contact form submissions</CardDescription>
@@ -534,6 +649,10 @@ export default function AdminDashboard() {
 
           <TabsContent value="transactions">
             <TransactionManager />
+          </TabsContent>
+
+          <TabsContent value="invoices">
+            <InvoiceTabView />
           </TabsContent>
         </Tabs>
         </main>

@@ -70,9 +70,16 @@ export const useSessionManager = () => {
       }
     }, 50 * 60 * 1000); // 50 minutes
 
-    // Refresh on user activity
+    // Throttle activity-based refresh to once per 5 minutes
+    let lastActivityRefresh = 0;
+    const ACTIVITY_REFRESH_COOLDOWN = 5 * 60 * 1000; // 5 minutes
+
     const handleActivity = () => {
-      refreshSessionIfNeeded();
+      const now = Date.now();
+      if (now - lastActivityRefresh > ACTIVITY_REFRESH_COOLDOWN) {
+        lastActivityRefresh = now;
+        refreshSessionIfNeeded();
+      }
     };
 
     window.addEventListener('click', handleActivity);

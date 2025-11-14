@@ -1,6 +1,7 @@
 /**
- * MinIO Storage Operations
+ * Storage Operations (Cloudflare R2)
  * S3-compatible storage API that mimics Firebase Storage interface
+ * Now using Cloudflare R2 for free cloud storage (10GB + unlimited bandwidth)
  */
 
 import { getMinioClient, DEFAULT_BUCKET, getPublicUrl, ensureBucket } from './minio-client';
@@ -8,7 +9,7 @@ import * as Minio from 'minio';
 import { Readable } from 'stream';
 
 /**
- * Upload a file to MinIO
+ * Upload a file to R2 storage
  */
 export async function uploadFile(
   path: string,

@@ -10,12 +10,16 @@ export default function About() {
     <div className="min-h-screen">
       <Navigation />
       
-      {/* Hero Section */}
-      <section className="pt-32 pb-16 bg-gradient-to-b from-secondary to-background">
+      {/* Hero Section - uses image at public/images/about-team-1.jpg */}
+      <section
+        className="pt-32 pb-16 bg-cover bg-center"
+        style={{ backgroundImage: `url('/images/about-team-1.jpg')` }}
+        aria-label="BIMaided team hero"
+      >
         <div className="container mx-auto px-4">
-          <div className="max-w-3xl mx-auto text-center">
-            <h1 className="text-5xl font-bold mb-6">About BIMaided</h1>
-            <p className="text-xl text-muted-foreground">
+          <div className="max-w-3xl mx-auto text-center py-20">
+            <h1 className="text-5xl font-bold mb-6 text-white drop-shadow-lg">About BIMaided</h1>
+            <p className="text-xl text-white drop-shadow-lg">
               Leading the future of construction through innovative BIM solutions
             </p>
           </div>
@@ -117,6 +121,43 @@ export default function About() {
             <div className="text-center">
               <div className="text-4xl font-bold text-primary mb-2">500+</div>
               <div className="text-muted-foreground">Projects Delivered</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Team Photos + Text Section
+          Layout: on md+ screens show two columns: left = text, right = 3 images stacked (alternative layout)
+          Uses images: public/images/about-team-2.jpg, about-team-3.jpg, about-team-4.jpg
+      */}
+      <section className="py-12 bg-base-100">
+        <div className="container mx-auto px-4">
+          <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+            <div>
+              <h3 className="text-2xl font-bold mb-4">Meet the Team</h3>
+              <p className="text-muted-foreground mb-6">
+                A snapshot from our studio — collaboration, focus and craft. Below are moments captured while our team works on modeling, coordination and reviews.
+              </p>
+
+              <ul className="space-y-3 text-sm text-muted-foreground">
+                <li>• Cross-discipline coordination and clash resolution</li>
+                <li>• Detailed modeling and drawing production</li>
+                <li>• Project reviews and client collaboration</li>
+              </ul>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4">
+              <figure className="overflow-hidden rounded-lg bg-white shadow-sm">
+                <img src="/images/about-team-2.jpg" alt="Modeling and coordination" className="w-full h-40 object-cover" />
+              </figure>
+
+              <figure className="overflow-hidden rounded-lg bg-white shadow-sm">
+                <img src="/images/about-team-3.jpg" alt="Focused drafting" className="w-full h-40 object-cover" />
+              </figure>
+
+              <figure className="overflow-hidden rounded-lg bg-white shadow-sm">
+                <img src="/images/about-team-4.jpg" alt="Project review" className="w-full h-40 object-cover" />
+              </figure>
             </div>
           </div>
         </div>

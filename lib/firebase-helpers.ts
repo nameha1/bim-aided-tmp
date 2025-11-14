@@ -83,7 +83,10 @@ export async function refreshSessionIfNeeded(): Promise<boolean> {
       return false;
     }
     
-    console.log('Session refreshed successfully');
+    // Only log in development mode to avoid console spam
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Session refreshed successfully');
+    }
     return true;
   } catch (error) {
     console.error('Error checking/refreshing session:', error);

@@ -286,6 +286,18 @@ async function setupAdminUser() {
       console.log(`   🔑 Password: ${adminPassword} (Please change this!)`);
     }
 
+    // Update employee record with auth_uid
+    const employeeRef = db.collection('employees').doc('emp-001');
+    const employeeSnap = await employeeRef.get();
+    
+    if (employeeSnap.exists) {
+      await employeeRef.update({
+        auth_uid: user.uid,
+        updated_at: new Date().toISOString()
+      });
+      console.log(`   ✓ Linked employee record to auth user`);
+    }
+
     // Set admin role in user_roles collection
     const roleRef = db.collection('user_roles').doc(user.uid);
     const roleSnap = await roleRef.get();
@@ -294,6 +306,7 @@ async function setupAdminUser() {
       await roleRef.set({
         role: 'admin',
         email: adminEmail,
+        employee_id: 'emp-001',
         created_at: new Date().toISOString()
       });
       console.log(`   ✓ Set admin role for user`);
@@ -310,6 +323,7 @@ async function setupAdminUser() {
         email: adminEmail,
         displayName: 'Admin User',
         role: 'admin',
+        employee_id: 'emp-001',
         created_at: new Date().toISOString()
       });
       console.log(`   ✓ Created user document`);

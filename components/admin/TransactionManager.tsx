@@ -446,11 +446,11 @@ export const TransactionManager = () => {
 
         <TabsContent value="transactions" className="space-y-6">
       <div className="flex justify-end gap-2">
-        <Button onClick={exportToExcel} variant="outline" className="border-blue-600 text-blue-600 hover:bg-blue-50">
+        <Button onClick={exportToExcel} variant="outline" className="border-blue-600 text-cyan-500 hover:bg-blue-50">
           <Download className="h-4 w-4 mr-2" />
           Export to Excel
         </Button>
-        <Button onClick={handleOpenDialog} className="bg-blue-600 hover:bg-blue-700">
+        <Button onClick={handleOpenDialog} className="bg-cyan-500 hover:bg-cyan-600">
           <Plus className="h-4 w-4 mr-2" />
           Add Transaction
         </Button>
@@ -616,10 +616,10 @@ export const TransactionManager = () => {
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between">
-              <p className={`text-2xl font-bold ${getBalance() >= 0 ? "text-blue-600" : "text-red-600"}`}>
+              <p className={`text-2xl font-bold ${getBalance() >= 0 ? "text-cyan-500" : "text-red-600"}`}>
                 {formatCurrency(getBalance())}
               </p>
-              <DollarSign className="h-8 w-8 text-blue-600" />
+              <DollarSign className="h-8 w-8 text-cyan-500" />
             </div>
           </CardContent>
         </Card>
@@ -807,7 +807,7 @@ export const TransactionManager = () => {
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSubmit} className="bg-blue-600 hover:bg-blue-700">
+            <Button onClick={handleSubmit} className="bg-cyan-500 hover:bg-cyan-600">
               {editingTransaction ? "Update" : "Add"} Transaction
             </Button>
           </div>

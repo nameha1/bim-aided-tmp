@@ -33,25 +33,29 @@ export default function Landing() {
       icon: Building2,
       title: "BIM Modeling",
       description: "Comprehensive 3D modeling services for architectural, structural, and MEP systems.",
-      image: "/images/bim-services/BIM Modeling.jpeg"
+      image: "/images/bim-services/BIM Modeling.jpeg",
+      href: "/services/bim-modeling"
     },
     {
       icon: Layers,
       title: "Advanced BIM Services",
       description: "Clash detection, 4D/5D BIM, and facility management solutions.",
-      image: "/images/bim-services/Advanced BIM.jpeg"
+      image: "/images/bim-services/Advanced BIM.jpeg",
+      href: "/services/advanced-bim"
     },
     {
       icon: Box,
       title: "VDC Services",
       description: "Virtual Design & Construction coordination for seamless project delivery.",
-      image: "/images/bim-services/VDC.jpeg"
+      image: "/images/bim-services/VDC.jpeg",
+      href: "/services/vdc-services"
     },
     {
       icon: Globe,
       title: "Global BIM Services",
       description: "International BIM standards compliance and consulting services.",
-      image: "/images/bim-services/Global BIM.jpeg"
+      image: "/images/bim-services/Global BIM.jpeg",
+      href: "/services/global-bim"
     },
   ];
 
@@ -98,24 +102,79 @@ export default function Landing() {
   // Fetch featured projects from database
   useEffect(() => {
     const fetchFeaturedProjects = async () => {
-      const { data, error } = await getDocuments('projects', [
+      console.log('[Landing Page] Fetching featured projects from Firestore...');
+      
+      let { data, error } = await getDocuments('projects', [
         where('published', '==', true),
         firestoreOrderBy('created_at', 'desc'),
         firestoreLimit(3)
       ]);
 
+      // If query fails (likely due to missing index), try without ordering
+      if (error && error.message?.includes('index')) {
+        console.warn('[Landing Page] ⚠️ Index required for ordering, fetching without orderBy');
+        const fallbackResult = await getDocuments('projects', [
+          where('published', '==', true),
+          firestoreLimit(3)
+        ]);
+        data = fallbackResult.data;
+        error = fallbackResult.error;
+        
+        // Sort in memory if we got data
+        if (data && data.length > 0) {
+          data = data.sort((a: any, b: any) => {
+            const aTime = a.created_at?.toMillis?.() || 0;
+            const bTime = b.created_at?.toMillis?.() || 0;
+            return bTime - aTime;
+          }).slice(0, 3);
+        }
+      }
+
+      if (error) {
+        console.error('[Landing Page] ❌ Error fetching projects:', error);
+      }
+
+      console.log('[Landing Page] ✅ Fetched from Firestore:', data?.length, 'projects');
+      console.log('[Landing Page] Data:', data);
+
       if (data && data.length > 0) {
         // Use database projects if available
-        const dbProjects = data.map((p: any) => ({
-          id: p.id,
-          title: p.title,
-          category: p.category,
-          description: truncateDescription(p.description || ''),
-          image: p.image_url || "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1920",
-        }));
+        console.log('[Landing Page] 📦 Raw project data from DB:', JSON.stringify(data, null, 2));
+        const dbProjects = data.map((p: any) => {
+          // Try image_url first, then gallery_image_1, then image, then fallback
+          let imageUrl = p.image_url;
+          
+          if (!imageUrl || imageUrl === 'N/A') {
+            console.log(`[Landing Page] ⚠️ No image_url for "${p.title}", checking gallery_image_1`);
+            imageUrl = p.gallery_image_1;
+          }
+          
+          if (!imageUrl || imageUrl === 'N/A') {
+            console.log(`[Landing Page] ⚠️ No gallery_image_1 for "${p.title}", checking image field`);
+            imageUrl = p.image;
+          }
+          
+          if (!imageUrl || imageUrl === 'N/A') {
+            console.log(`[Landing Page] ⚠️ No images found for "${p.title}", using fallback`);
+            imageUrl = "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1920";
+          }
+          
+          console.log(`[Landing Page] 🖼️ Project "${p.title}" - Final image: ${imageUrl}`);
+          
+          return {
+            id: p.id,
+            title: p.title,
+            category: p.category,
+            description: truncateDescription(p.description || ''),
+            image: imageUrl,
+          };
+        });
+        console.log('[Landing Page] 📊 Setting featured projects with database data');
+        console.log('[Landing Page] 🖼️ Final mapped projects:', JSON.stringify(dbProjects, null, 2));
         setFeaturedProjects(dbProjects);
       } else {
         // Fallback to static projects
+        console.log('[Landing Page] ⚠️ No projects found or error, using static fallback');
         setFeaturedProjects(staticProjects.map(p => ({
           ...p,
           description: truncateDescription(p.description),
@@ -320,31 +379,32 @@ export default function Landing() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {services.map((service, index) => (
-              <Card 
-                key={index} 
-                className="border-border hover:shadow-2xl transition-all duration-500 group overflow-hidden animate-fade-in-up"
-                style={{ 
-                  animationDelay: `${index * 150}ms`,
-                  opacity: 0
-                }}
-              >
-                {/* Image Section */}
-                <div className="relative h-48 overflow-hidden">
-                  <img 
-                    src={service.image} 
-                    alt={service.title}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
-                </div>
+              <Link key={index} href={service.href}>
+                <Card 
+                  className="border-border hover:shadow-2xl transition-all duration-500 group overflow-hidden animate-fade-in-up cursor-pointer h-full"
+                  style={{ 
+                    animationDelay: `${index * 150}ms`,
+                    opacity: 0
+                  }}
+                >
+                  {/* Image Section */}
+                  <div className="relative h-48 overflow-hidden">
+                    <img 
+                      src={service.image} 
+                      alt={service.title}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
+                  </div>
 
-                <CardHeader>
-                  <CardTitle className="group-hover:text-primary transition-colors">{service.title}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <CardDescription className="leading-relaxed">{service.description}</CardDescription>
-                </CardContent>
-              </Card>
+                  <CardHeader>
+                    <CardTitle className="group-hover:text-primary transition-colors">{service.title}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <CardDescription className="leading-relaxed">{service.description}</CardDescription>
+                  </CardContent>
+                </Card>
+              </Link>
             ))}
           </div>
 
@@ -379,6 +439,13 @@ export default function Landing() {
                       alt={project.title}
                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                       loading="lazy"
+                      onError={(e) => {
+                        console.error('[Landing Page] ❌ Image failed to load:', project.image);
+                        console.error('[Landing Page] Error:', e);
+                      }}
+                      onLoad={() => {
+                        console.log('[Landing Page] ✅ Image loaded successfully:', project.image);
+                      }}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
                     <div className="absolute bottom-4 left-4 right-4">

@@ -19,8 +19,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-// TODO: Migrate to Firebase
-import { supabase } from "@/lib/supabase-stub";
+import { getDocuments, createDocument, updateDocument } from "@/lib/firebase/firestore";
+import { where } from "firebase/firestore";
+import { getCurrentUser } from "@/lib/firebase/auth";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Calendar as CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
@@ -61,11 +62,8 @@ const ManualAttendanceEntry = ({ onSuccess }: ManualAttendanceEntryProps) => {
 
   const fetchEmployees = async () => {
     try {
-      const { data, error } = await supabase
-        .from("employees")
-        .select("id, first_name, last_name")
-        .eq("employment_status", "Active")
-        .order("first_name");
+      // Fetch all employees and filter active ones
+      const { data, error } = await getDocuments("employees");
 
       if (error) {
         console.error("Error fetching employees:", error);
@@ -78,7 +76,25 @@ const ManualAttendanceEntry = ({ onSuccess }: ManualAttendanceEntryProps) => {
       }
 
       console.log("Fetched employees:", data);
-      setEmployees(data || []);
+      
+      // Filter active employees and map the data to match expected structure
+      const activeEmployees = (data || [])
+        .filter((emp: any) => 
+          emp.status === "active" || 
+          emp.employmentStatus === "active" || 
+          emp.employment_status === "Active"
+        )
+        .map((emp: any) => ({
+          id: emp.id,
+          first_name: emp.firstName || emp.first_name,
+          last_name: emp.lastName || emp.last_name,
+        }));
+      
+      setEmployees(activeEmployees);
+      
+      if (activeEmployees.length === 0) {
+        console.warn("No active employees found");
+      }
     } catch (error) {
       console.error("Error:", error);
     }
@@ -89,53 +105,50 @@ const ManualAttendanceEntry = ({ onSuccess }: ManualAttendanceEntryProps) => {
     setLoading(true);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = getCurrentUser();
       if (!user) throw new Error("Not authenticated");
 
       // Get admin employee id
-      const { data: adminEmployee } = await supabase
-        .from("employees")
-        .select("id")
-        .eq("user_id", user.id)
-        .single();
+      const { data: adminEmployees } = await getDocuments("employees", [
+        where("auth_uid", "==", user.uid)
+      ]);
+      const adminEmployee = adminEmployees && adminEmployees.length > 0 ? adminEmployees[0] : null;
 
       const dateString = format(formData.date, "yyyy-MM-dd");
 
       // Check if attendance already exists
-      const { data: existing } = await supabase
-        .from("attendance")
-        .select("id")
-        .eq("employee_id", formData.employee_id)
-        .eq("date", dateString)
-        .single();
+      const { data: existingRecords } = await getDocuments("attendance", [
+        where("employee_id", "==", formData.employee_id),
+        where("date", "==", dateString)
+      ]);
+      const existing = existingRecords && existingRecords.length > 0 ? existingRecords[0] : null;
 
-      // Convert time strings to full timestamps
+      // Convert time strings to Date objects or null
       const check_in_timestamp = formData.check_in_time
-        ? `${dateString}T${formData.check_in_time}:00Z`
+        ? new Date(`${dateString}T${formData.check_in_time}:00`)
         : null;
       const check_out_timestamp = formData.check_out_time
-        ? `${dateString}T${formData.check_out_time}:00Z`
+        ? new Date(`${dateString}T${formData.check_out_time}:00`)
         : null;
 
       if (existing) {
         // Update existing
-        const { error } = await supabase
-          .from("attendance")
-          .update({
-            check_in_time: check_in_timestamp,
-            check_out_time: check_out_timestamp,
-            status: formData.status,
-            manually_added: true,
-            admin_approved: true,
-            admin_approved_by: adminEmployee?.id,
-            admin_approved_at: new Date().toISOString(),
-          })
-          .eq("id", existing.id);
+        const { error } = await updateDocument("attendance", existing.id, {
+          employee_id: formData.employee_id,  // Make sure employee_id is always set
+          check_in_time: check_in_timestamp,
+          check_out_time: check_out_timestamp,
+          status: formData.status,
+          manually_added: true,
+          admin_approved: true,
+          admin_approved_by: adminEmployee?.id || null,
+          admin_approved_at: new Date(),
+          updated_at: new Date(),
+        });
 
         if (error) throw error;
       } else {
         // Insert new
-        const { error } = await supabase.from("attendance").insert({
+        const { error } = await createDocument("attendance", {
           employee_id: formData.employee_id,
           date: dateString,
           check_in_time: check_in_timestamp,
@@ -143,8 +156,9 @@ const ManualAttendanceEntry = ({ onSuccess }: ManualAttendanceEntryProps) => {
           status: formData.status,
           manually_added: true,
           admin_approved: true,
-          admin_approved_by: adminEmployee?.id,
-          admin_approved_at: new Date().toISOString(),
+          admin_approved_by: adminEmployee?.id || null,
+          admin_approved_at: new Date(),
+          created_at: new Date(),
         });
 
         if (error) throw error;

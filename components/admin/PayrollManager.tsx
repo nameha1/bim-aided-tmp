@@ -10,7 +10,7 @@ import { getDocuments, updateDocument, createDocument } from "@/lib/firebase/fir
 import { where } from "firebase/firestore";
 import { auth } from "@/lib/firebase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Download, Check, X, RefreshCw, DollarSign, Settings } from "lucide-react";
+import { Download, Check, X, RefreshCw, DollarSign, Settings, Info } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
@@ -20,6 +20,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 interface PayrollSettingsProps {
   config: Record<string, string>;
@@ -157,6 +162,7 @@ const PayrollManager = () => {
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [payrollData, setPayrollData] = useState<any[]>([]);
+  const [employees, setEmployees] = useState<any[]>([]);
   const [selectedPayrolls, setSelectedPayrolls] = useState<string[]>([]);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [salaryConfig, setSalaryConfig] = useState<Record<string, string>>({});
@@ -213,28 +219,62 @@ const PayrollManager = () => {
   const fetchPayrollData = async () => {
     setLoading(true);
     try {
-      const { data, error } = await getDocuments('payroll', [
+      // Fetch all active employees
+      const { data: allEmployees, error: empError } = await getDocuments('employees', [
+        where('status', '==', 'active')
+      ]);
+
+      if (empError) throw empError;
+
+      // Fetch existing payroll records for the selected month/year
+      const { data: existingPayroll, error: payrollError } = await getDocuments('payroll', [
         where('month', '==', parseInt(selectedMonth)),
         where('year', '==', parseInt(selectedYear))
       ]);
 
-      if (error) throw error;
+      if (payrollError) throw payrollError;
 
-      // Enrich with employee details
-      const enrichedData = await Promise.all(
-        (data || []).map(async (payroll: any) => {
-          const { data: employee } = await getDocuments('employees', [
-            where('id', '==', payroll.employee_id)
-          ]);
-          
+      // Create a map of existing payroll by employee_id
+      const payrollMap = new Map();
+      (existingPayroll || []).forEach((p: any) => {
+        payrollMap.set(p.employee_id, p);
+      });
+
+      // Merge employees with their payroll data (or create empty payroll structure)
+      const mergedData = (allEmployees || []).map((employee: any) => {
+        const existingRecord = payrollMap.get(employee.id);
+        
+        if (existingRecord) {
           return {
-            ...payroll,
-            employee: employee?.[0] || null
+            ...existingRecord,
+            employee: employee
           };
-        })
-      );
+        } else {
+          // Create a new empty payroll record structure
+          return {
+            id: `temp_${employee.id}_${selectedMonth}_${selectedYear}`, // Temporary ID until saved
+            employee_id: employee.id,
+            employee: employee,
+            month: parseInt(selectedMonth),
+            year: parseInt(selectedYear),
+            basic_salary: employee.gross_salary || employee.salary || 0,
+            festival_bonus: 0,
+            loan_deduction: 0,
+            lunch_subsidy: 0,
+            ait: 0,
+            total_present_days: 0,
+            total_absent_days: 0,
+            total_late_days: 0,
+            unpaid_leave_days: 0,
+            total_deduction: 0,
+            net_payable_salary: employee.gross_salary || employee.salary || 0,
+            status: 'pending',
+            is_new: true // Flag to indicate this hasn't been saved yet
+          };
+        }
+      });
 
-      setPayrollData(enrichedData || []);
+      setPayrollData(mergedData || []);
     } catch (error: any) {
       toast({
         title: "Error loading payroll",
@@ -394,37 +434,43 @@ const PayrollManager = () => {
 
   const exportToExcel = () => {
     const headers = [
-      "Employee ID",
+      "SL",
       "Employee Name",
+      "Employee ID",
       "Designation",
-      "Basic Salary",
-      "Present Days",
-      "Absent Days",
-      "Late Days",
-      "Casual Leave",
-      "Sick Leave",
-      "Unpaid Leave",
-      "Late Penalty",
+      "Month",
+      "Gross Salary",
+      "Festival Bonus",
+      "Loan Deduction",
+      "Lunch Subsidy",
+      "AIT",
       "Total Deduction",
-      "Net Salary",
-      "Status"
+      "Total Payable",
+      "Disbursement",
+      "Account Details",
+      "Account Number",
+      "Status",
+      "Remarks"
     ];
 
-    const rows = payrollData.map(p => [
-      p.employee?.eid || '-',
+    const rows = payrollData.map((p, index) => [
+      index + 1, // SL
       p.employee?.name || '-',
+      p.employee?.eid || '-',
       p.employee?.designation || '-',
+      `${months.find(m => m.value === selectedMonth)?.label}, ${selectedYear}`,
       p.basic_salary,
-      p.total_present_days,
-      p.total_absent_days,
-      p.total_late_days,
-      p.casual_leave_taken || 0,
-      p.sick_leave_taken || 0,
-      p.unpaid_leave_days,
-      p.late_penalty_days || 0,
+      p.festival_bonus || 0,
+      p.loan_deduction || 0,
+      p.lunch_subsidy || 0,
+      p.ait || 0,
       p.total_deduction,
       p.net_payable_salary,
-      p.status
+      '', // Disbursement date (to be filled manually)
+      '', // Account Details
+      '', // Account Number
+      p.status,
+      '' // Remarks
     ]);
 
     const csv = [headers, ...rows]
@@ -435,7 +481,7 @@ const PayrollManager = () => {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `Payroll_${selectedYear}_${selectedMonth}.csv`;
+    a.download = `Salary_Disbursement_${months.find(m => m.value === selectedMonth)?.label}_${selectedYear}.csv`;
     a.click();
   };
 
@@ -471,6 +517,119 @@ const PayrollManager = () => {
     }).format(amount);
   };
 
+  const calculatePayrollTotals = (payroll: any, field: string, value: number) => {
+    // Create updated payroll object with new value
+    const updated = { ...payroll, [field]: value };
+    
+    // Get values
+    const festivalBonus = updated.festival_bonus || 0;
+    const loanDeduction = updated.loan_deduction || 0;
+    const lunchSubsidy = updated.lunch_subsidy || 0;
+    const ait = updated.ait || 0;
+    
+    // Get deductions from generation (these come from API)
+    const latePenalty = updated.late_penalty || 0;
+    const unpaidLeaveDeduction = updated.unpaid_leave_deduction || 0;
+    const halfDayDeduction = updated.half_day_deduction || 0;
+    const absentDeduction = updated.absent_deduction || 0;
+    
+    // Calculate total deduction: automated deductions + manual deductions - bonuses/subsidies
+    const totalDeduction = latePenalty + unpaidLeaveDeduction + halfDayDeduction + absentDeduction + loanDeduction + ait - festivalBonus - lunchSubsidy;
+    
+    // Calculate net payable
+    const netPayable = Math.max(0, updated.basic_salary - totalDeduction);
+    
+    return {
+      total_deduction: totalDeduction,
+      net_payable_salary: netPayable
+    };
+  };
+
+  const updatePayrollField = async (payrollId: string, field: string, value: number) => {
+    try {
+      const payroll = payrollData.find(p => p.id === payrollId);
+      if (!payroll) return;
+
+      // Calculate updated totals
+      const calculatedTotals = calculatePayrollTotals(payroll, field, value);
+
+      // If this is a new record (not yet in database), create it first
+      if (payroll.is_new) {
+        const newPayrollData = {
+          employee_id: payroll.employee_id,
+          month: payroll.month,
+          year: payroll.year,
+          basic_salary: payroll.basic_salary,
+          festival_bonus: field === 'festival_bonus' ? value : (payroll.festival_bonus || 0),
+          loan_deduction: field === 'loan_deduction' ? value : (payroll.loan_deduction || 0),
+          lunch_subsidy: field === 'lunch_subsidy' ? value : (payroll.lunch_subsidy || 0),
+          ait: field === 'ait' ? value : (payroll.ait || 0),
+          total_present_days: payroll.total_present_days || 0,
+          total_absent_days: payroll.total_absent_days || 0,
+          total_late_days: payroll.total_late_days || 0,
+          unpaid_leave_days: payroll.unpaid_leave_days || 0,
+          late_penalty: payroll.late_penalty || 0,
+          unpaid_leave_deduction: payroll.unpaid_leave_deduction || 0,
+          half_day_deduction: payroll.half_day_deduction || 0,
+          absent_deduction: payroll.absent_deduction || 0,
+          total_deduction: calculatedTotals.total_deduction,
+          net_payable_salary: calculatedTotals.net_payable_salary,
+          status: 'pending',
+          created_at: new Date().toISOString()
+        };
+
+        const { data: newId, error: createError } = await createDocument('payroll', newPayrollData);
+        
+        if (createError) throw createError;
+
+        // Update local state with the new real ID and calculated values
+        setPayrollData(prev => prev.map(p => 
+          p.id === payrollId ? { 
+            ...p, 
+            id: newId, 
+            [field]: value, 
+            ...calculatedTotals,
+            is_new: false 
+          } : p
+        ));
+
+        toast({
+          title: "Payroll record created",
+          description: `${field.replace(/_/g, ' ')} saved successfully`,
+        });
+      } else {
+        // Update existing record with recalculated totals
+        const { error } = await updateDocument('payroll', payrollId, {
+          [field]: value,
+          ...calculatedTotals,
+          updated_at: new Date().toISOString()
+        });
+
+        if (error) throw error;
+
+        // Update local state with recalculated values
+        setPayrollData(prev => prev.map(p => 
+          p.id === payrollId ? { 
+            ...p, 
+            [field]: value,
+            ...calculatedTotals
+          } : p
+        ));
+
+        toast({
+          title: "Updated",
+          description: `${field.replace(/_/g, ' ')} updated successfully`,
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error updating field",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="space-y-6">
       <Card>
@@ -482,7 +641,7 @@ const PayrollManager = () => {
                 Payroll Management
               </CardTitle>
               <CardDescription>
-                Generate and manage monthly salary disbursements based on attendance and leave records
+                View all employees and manage monthly salary disbursements. Add bonuses, deductions, and other details directly.
               </CardDescription>
             </div>
             <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
@@ -540,11 +699,6 @@ const PayrollManager = () => {
               </Select>
             </div>
 
-            <Button onClick={generatePayroll} disabled={generating}>
-              <RefreshCw className={`h-4 w-4 mr-2 ${generating ? 'animate-spin' : ''}`} />
-              {generating ? 'Generating...' : 'Generate Payroll'}
-            </Button>
-
             <Button onClick={exportToExcel} variant="outline" disabled={payrollData.length === 0}>
               <Download className="h-4 w-4 mr-2" />
               Export Excel
@@ -569,12 +723,7 @@ const PayrollManager = () => {
       <Card>
         <CardContent className="pt-6">
           {loading ? (
-            <div className="text-center py-8">Loading payroll data...</div>
-          ) : payrollData.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              No payroll records found for {months.find(m => m.value === selectedMonth)?.label} {selectedYear}.
-              Click "Generate Payroll" to create records.
-            </div>
+            <div className="text-center py-8">Loading employee data...</div>
           ) : (
             <div className="overflow-x-auto">
               <Table>
@@ -582,19 +731,23 @@ const PayrollManager = () => {
                   <TableRow>
                     <TableHead className="w-12">
                       <Checkbox
-                        checked={selectedPayrolls.length === payrollData.length}
+                        checked={selectedPayrolls.length === payrollData.length && payrollData.length > 0}
                         onCheckedChange={toggleSelectAll}
                       />
                     </TableHead>
                     <TableHead>Employee</TableHead>
                     <TableHead>Designation</TableHead>
-                    <TableHead className="text-right">Basic Salary</TableHead>
+                    <TableHead className="text-right">Gross Salary</TableHead>
+                    <TableHead className="text-right w-32">Festival Bonus</TableHead>
+                    <TableHead className="text-right w-32">Loan Deduction</TableHead>
+                    <TableHead className="text-right w-32">Lunch Subsidy</TableHead>
                     <TableHead className="text-center">Present</TableHead>
                     <TableHead className="text-center">Absent</TableHead>
                     <TableHead className="text-center">Late</TableHead>
                     <TableHead className="text-center">Unpaid Leave</TableHead>
-                    <TableHead className="text-right">Deduction</TableHead>
-                    <TableHead className="text-right">Net Salary</TableHead>
+                    <TableHead className="text-right">AIT</TableHead>
+                    <TableHead className="text-right">Total Deduction</TableHead>
+                    <TableHead className="text-right">Total Payable</TableHead>
                     <TableHead>Status</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -628,12 +781,126 @@ const PayrollManager = () => {
                       <TableCell className="text-right font-medium">
                         {formatCurrency(payroll.basic_salary)}
                       </TableCell>
+                      <TableCell className="text-right">
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={payroll.festival_bonus || 0}
+                          onChange={(e) => updatePayrollField(payroll.id, 'festival_bonus', parseFloat(e.target.value) || 0)}
+                          className="w-28 text-right"
+                          placeholder="0"
+                        />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={payroll.loan_deduction || 0}
+                          onChange={(e) => updatePayrollField(payroll.id, 'loan_deduction', parseFloat(e.target.value) || 0)}
+                          className="w-28 text-right"
+                          placeholder="0"
+                        />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={payroll.lunch_subsidy || 0}
+                          onChange={(e) => updatePayrollField(payroll.id, 'lunch_subsidy', parseFloat(e.target.value) || 0)}
+                          className="w-28 text-right"
+                          placeholder="0"
+                        />
+                      </TableCell>
                       <TableCell className="text-center">{payroll.total_present_days}</TableCell>
                       <TableCell className="text-center">{payroll.total_absent_days}</TableCell>
                       <TableCell className="text-center">{payroll.total_late_days}</TableCell>
                       <TableCell className="text-center">{payroll.unpaid_leave_days}</TableCell>
+                      <TableCell className="text-right">
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={payroll.ait || 0}
+                          onChange={(e) => updatePayrollField(payroll.id, 'ait', parseFloat(e.target.value) || 0)}
+                          className="w-28 text-right"
+                          placeholder="0"
+                        />
+                      </TableCell>
                       <TableCell className="text-right text-red-600">
-                        -{formatCurrency(payroll.total_deduction)}
+                        <div className="flex items-center justify-end gap-1">
+                          <span>-{formatCurrency(payroll.total_deduction)}</span>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-6 w-6">
+                                <Info className="h-4 w-4" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-72">
+                              <div className="space-y-2">
+                                <h4 className="font-semibold text-sm">Deduction Breakdown</h4>
+                                <div className="space-y-1 text-sm">
+                                  {payroll.late_penalty > 0 && (
+                                    <div className="flex justify-between">
+                                      <span className="text-muted-foreground">Late Penalty:</span>
+                                      <span className="text-red-600">-{formatCurrency(payroll.late_penalty)}</span>
+                                    </div>
+                                  )}
+                                  {payroll.unpaid_leave_deduction > 0 && (
+                                    <div className="flex justify-between">
+                                      <span className="text-muted-foreground">Unpaid Leave:</span>
+                                      <span className="text-red-600">-{formatCurrency(payroll.unpaid_leave_deduction)}</span>
+                                    </div>
+                                  )}
+                                  {payroll.half_day_deduction > 0 && (
+                                    <div className="flex justify-between">
+                                      <span className="text-muted-foreground">Half Days:</span>
+                                      <span className="text-red-600">-{formatCurrency(payroll.half_day_deduction)}</span>
+                                    </div>
+                                  )}
+                                  {payroll.absent_deduction > 0 && (
+                                    <div className="flex justify-between">
+                                      <span className="text-muted-foreground">Absent Days:</span>
+                                      <span className="text-red-600">-{formatCurrency(payroll.absent_deduction)}</span>
+                                    </div>
+                                  )}
+                                  {payroll.loan_deduction > 0 && (
+                                    <div className="flex justify-between">
+                                      <span className="text-muted-foreground">Loan Deduction:</span>
+                                      <span className="text-red-600">-{formatCurrency(payroll.loan_deduction)}</span>
+                                    </div>
+                                  )}
+                                  {payroll.ait > 0 && (
+                                    <div className="flex justify-between">
+                                      <span className="text-muted-foreground">AIT:</span>
+                                      <span className="text-red-600">-{formatCurrency(payroll.ait)}</span>
+                                    </div>
+                                  )}
+                                  {payroll.festival_bonus > 0 && (
+                                    <div className="flex justify-between">
+                                      <span className="text-muted-foreground">Festival Bonus:</span>
+                                      <span className="text-green-600">+{formatCurrency(payroll.festival_bonus)}</span>
+                                    </div>
+                                  )}
+                                  {payroll.lunch_subsidy > 0 && (
+                                    <div className="flex justify-between">
+                                      <span className="text-muted-foreground">Lunch Subsidy:</span>
+                                      <span className="text-green-600">+{formatCurrency(payroll.lunch_subsidy)}</span>
+                                    </div>
+                                  )}
+                                  <div className="border-t pt-1 mt-2">
+                                    <div className="flex justify-between font-semibold">
+                                      <span>Net Deduction:</span>
+                                      <span className="text-red-600">-{formatCurrency(payroll.total_deduction)}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </PopoverContent>
+                          </Popover>
+                        </div>
                       </TableCell>
                       <TableCell className="text-right font-bold text-green-600">
                         {formatCurrency(payroll.net_payable_salary)}

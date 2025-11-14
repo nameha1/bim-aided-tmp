@@ -11,11 +11,10 @@ export default function Projects() {
   const categories = [
     "All",
     "Commercial",
-    "Education & Healthcare",
-    "Cultural & Sports",
     "Residential",
-    "Infrastructure & Municipal",
-    "Industrial & Park",
+    "Historical",
+    "Embassy",
+    "Infrastructure",
   ];
 
   const [selectedCategory, setSelectedCategory] = useState("All");
@@ -40,33 +39,33 @@ export default function Projects() {
     },
     {
       id: "2",
-      title: "City University Campus",
-      category: "Education & Healthcare",
-      description: "Comprehensive BIM services for a modern educational facility.",
-      image: "https://images.unsplash.com/photo-1562774053-701939374585?w=800",
-      client_name: "State Education Authority",
+      title: "Historic Museum Restoration",
+      category: "Historical",
+      description: "Comprehensive BIM services for heritage building restoration and modernization.",
+      image: "https://images.unsplash.com/photo-1564399579883-451a5d44ec08?w=800",
+      client_name: "National Heritage Trust",
       completion_date: "2024-06-20",
       project_value: 28000000,
       location: "Boston, USA",
-      scope: "Design and construction documentation for a state-of-the-art university campus including lecture halls, laboratories, library, and student center with advanced learning technologies.",
-      challenges: "Coordinating multiple buildings with different functional requirements, ensuring accessibility compliance, and integrating smart building technologies.",
-      solutions: "Created a comprehensive BIM execution plan, established consistent modeling standards across all disciplines, and developed custom families for specialized educational equipment.",
-      technologies: ["Revit", "Enscape", "BIM 360", "Solibri", "Bluebeam"],
+      scope: "Detailed 3D documentation and restoration planning for a 19th-century museum building, including structural assessment, MEP upgrades while preserving historical features.",
+      challenges: "Documenting intricate historical details, integrating modern systems without compromising heritage value, ensuring compliance with preservation standards.",
+      solutions: "Utilized 3D laser scanning for precise documentation, created detailed restoration models, and developed phased implementation plan to minimize impact on operations.",
+      technologies: ["Revit", "ReCap Pro", "Point Cloud", "BIM 360", "AutoCAD"],
     },
     {
       id: "3",
-      title: "National Sports Arena",
-      category: "Cultural & Sports",
-      description: "Advanced structural and MEP modeling for large-scale sports facility.",
-      image: "https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?w=800",
-      client_name: "National Sports Commission",
+      title: "Embassy Complex",
+      category: "Embassy",
+      description: "High-security diplomatic facility with advanced building systems.",
+      image: "https://images.unsplash.com/photo-1582407947304-fd86f028f716?w=800",
+      client_name: "Ministry of Foreign Affairs",
       completion_date: "2024-12-10",
       project_value: 125000000,
-      location: "Los Angeles, USA",
-      scope: "Complete BIM services for a 50,000-seat multi-purpose arena including complex roof structure, advanced HVAC systems, broadcast facilities, and VIP suites.",
-      challenges: "Modeling complex geometric roof structure, coordinating large-scale MEP systems, and ensuring optimal sight lines from all seating areas.",
-      solutions: "Utilized parametric modeling for the complex roof geometry, performed detailed energy analysis, and created virtual reality walkthroughs for stakeholder approval.",
-      technologies: ["Revit", "Rhinoceros", "Grasshopper", "Navisworks", "Lumion", "IES VE"],
+      location: "Washington DC, USA",
+      scope: "Complete BIM services for a secure embassy complex including office buildings, residential quarters, security infrastructure, and ceremonial spaces with state-of-the-art technology.",
+      challenges: "Meeting stringent security requirements, coordinating complex security systems, ensuring compliance with international diplomatic building standards.",
+      solutions: "Developed comprehensive security-integrated BIM models, performed detailed coordination with security consultants, and created secure construction documentation protocols.",
+      technologies: ["Revit", "Navisworks", "BIM 360", "AutoCAD", "Solibri"],
     },
     {
       id: "4",
@@ -86,7 +85,7 @@ export default function Projects() {
     {
       id: "5",
       title: "Metro Transit Station",
-      category: "Infrastructure & Municipal",
+      category: "Infrastructure",
       description: "Infrastructure BIM coordination for urban transit development.",
       image: "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=800",
       client_name: "City Transit Authority",
@@ -100,26 +99,103 @@ export default function Projects() {
     },
     {
       id: "6",
-      title: "Manufacturing Facility",
-      category: "Industrial & Park",
-      description: "Industrial complex with specialized MEP and structural modeling.",
+      title: "Corporate Headquarters",
+      category: "Commercial",
+      description: "Modern corporate campus with sustainable design features.",
       image: "https://images.unsplash.com/photo-1581094794329-c8112a89af12?w=800",
       client_name: "Global Industries Inc.",
       completion_date: "2024-07-22",
       project_value: 52000000,
       location: "Houston, USA",
-      scope: "Complete BIM services for an advanced manufacturing facility including production areas, clean rooms, utilities infrastructure, and administrative offices.",
-      challenges: "Modeling complex process piping systems, coordinating heavy equipment placement, and ensuring compliance with industrial safety standards.",
-      solutions: "Created detailed 3D models of all process equipment, performed CFD analysis for ventilation systems, and developed comprehensive installation documentation.",
-      technologies: ["Revit", "AutoCAD Plant 3D", "Navisworks", "Fabrication CADmep", "BIM 360"],
+      scope: "Complete BIM services for a modern corporate headquarters featuring open office spaces, collaborative work areas, cafeteria, fitness center, and LEED certification requirements.",
+      challenges: "Achieving LEED Platinum certification, optimizing energy efficiency, and creating flexible workspace layouts that can adapt to future needs.",
+      solutions: "Performed comprehensive energy analysis, developed sustainable design strategies, and created adaptable BIM models to support various workspace configurations.",
+      technologies: ["Revit", "IES VE", "Navisworks", "BIM 360", "Enscape"],
     },
   ];
 
   // Fetch projects from database
   useEffect(() => {
     const fetchProjects = async () => {
-      // TODO: Migrate to Firebase - using static fallback for now
-      setFilteredProjects(selectedCategory === "All" ? projects : projects.filter(p => p.category === selectedCategory));
+      try {
+        console.log('[Projects Page] Fetching projects from Firestore...');
+        console.log('[Projects Page] Selected category:', selectedCategory);
+        
+        const { getDocuments } = await import('@/lib/firebase/firestore');
+        const { where, orderBy } = await import('firebase/firestore');
+        
+        // Build query constraints
+        const constraints: any[] = [];
+        
+        // Add published filter
+        constraints.push(where('published', '==', true));
+        console.log('[Projects Page] Added published filter');
+        
+        // Only add category filter if not "All"
+        if (selectedCategory !== "All") {
+          constraints.push(where('category', '==', selectedCategory));
+          console.log('[Projects Page] Added category filter:', selectedCategory);
+        }
+        
+        // Add ordering - NOTE: This requires a composite index in Firestore
+        // If the index doesn't exist, we'll catch the error and fetch without ordering
+        constraints.push(orderBy('created_at', 'desc'));
+        console.log('[Projects Page] Added ordering by created_at desc');
+        
+        let { data, error } = await getDocuments('projects', constraints);
+        
+        // If query fails (likely due to missing index), try without ordering
+        if (error && error.message?.includes('index')) {
+          console.warn('[Projects Page] ⚠️ Index required for ordering, fetching without orderBy');
+          const simpleConstraints = [where('published', '==', true)];
+          if (selectedCategory !== "All") {
+            simpleConstraints.push(where('category', '==', selectedCategory));
+          }
+          const fallbackResult = await getDocuments('projects', simpleConstraints);
+          data = fallbackResult.data;
+          error = fallbackResult.error;
+          
+          // Sort in memory if we got data
+          if (data && data.length > 0) {
+            data = data.sort((a: any, b: any) => {
+              const aTime = a.created_at?.toMillis?.() || 0;
+              const bTime = b.created_at?.toMillis?.() || 0;
+              return bTime - aTime;
+            });
+          }
+        }
+        
+        if (error) {
+          console.error('[Projects Page] ❌ Error fetching projects:', error);
+          // Use static fallback on error
+          console.log('[Projects Page] Using static fallback due to error');
+          setFilteredProjects(selectedCategory === "All" ? projects : projects.filter(p => p.category === selectedCategory));
+          return;
+        }
+        
+        console.log('[Projects Page] ✅ Fetched from Firestore:', data?.length, 'projects');
+        console.log('[Projects Page] Data:', data);
+        
+        if (data && data.length > 0) {
+          console.log('[Projects Page] 📊 Setting filtered projects with database data');
+          // Normalize the data to match the expected format
+          const normalizedData = data.map((project: any) => ({
+            ...project,
+            image: project.image_url || project.image || "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800"
+          }));
+          console.log('[Projects Page] Normalized data:', normalizedData);
+          setFilteredProjects(normalizedData);
+        } else {
+          // Use static fallback if no data
+          console.log('[Projects Page] ⚠️ No projects found, using static fallback');
+          setFilteredProjects(selectedCategory === "All" ? projects : projects.filter(p => p.category === selectedCategory));
+        }
+      } catch (error) {
+        console.error('[Projects Page] ❌ Error in fetchProjects:', error);
+        // Use static fallback on error
+        console.log('[Projects Page] Using static fallback due to exception');
+        setFilteredProjects(selectedCategory === "All" ? projects : projects.filter(p => p.category === selectedCategory));
+      }
     };
 
     fetchProjects();
@@ -133,20 +209,54 @@ export default function Projects() {
     <div className="min-h-screen">
       <Navigation />
       
-      {/* Hero Section */}
-      <section className="pt-32 pb-16 bg-gradient-to-b from-secondary to-background">
-        <div className="container mx-auto px-4">
-          <div className="max-w-3xl mx-auto text-center">
-            <h1 className="text-5xl font-bold mb-6">Our Projects</h1>
-            <p className="text-xl text-muted-foreground">
+      {/* Hero Section with Background Image */}
+      <section className="relative pt-32 pb-24 overflow-hidden">
+        {/* Background Image with Overlay */}
+        <div className="absolute inset-0 z-0">
+          <img 
+            src="https://images.unsplash.com/photo-1503387762-592deb58ef4e?q=80&w=2000"
+            alt="Architecture and construction projects"
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-br from-cyan-900/90 via-blue-900/85 to-slate-900/90" />
+          
+          {/* Animated background pattern */}
+          <div className="absolute inset-0 opacity-10">
+            <div className="absolute inset-0" style={{
+              backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)',
+              backgroundSize: '40px 40px'
+            }} />
+          </div>
+          
+          {/* Floating shapes */}
+          <div className="absolute top-20 right-10 w-72 h-72 bg-cyan-400/20 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-20 left-20 w-96 h-96 bg-blue-400/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+        </div>
+
+        <div className="container mx-auto px-4 relative z-10">
+          <div className="max-w-4xl mx-auto text-center">
+            <div className="inline-block mb-4 px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full border border-white/20">
+              <span className="text-white/90 font-medium">Portfolio Showcase</span>
+            </div>
+            <h1 className="text-5xl md:text-6xl font-bold mb-6 text-white drop-shadow-lg">
+              Our Projects
+            </h1>
+            <p className="text-xl md:text-2xl text-white/90 mb-8 leading-relaxed max-w-3xl mx-auto">
               Explore our portfolio of successful BIM implementations across various project types
             </p>
           </div>
         </div>
+        
+        {/* Bottom wave decoration */}
+        <div className="absolute bottom-0 left-0 right-0">
+          <svg viewBox="0 0 1440 120" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full">
+            <path d="M0 0L60 10C120 20 240 40 360 46.7C480 53 600 47 720 43.3C840 40 960 40 1080 46.7C1200 53 1320 67 1380 73.3L1440 80V120H1380C1320 120 1200 120 1080 120C960 120 840 120 720 120C600 120 480 120 360 120C240 120 120 120 60 120H0V0Z" fill="white"/>
+          </svg>
+        </div>
       </section>
 
       {/* Filter Section */}
-      <section className="py-8 border-b border-border">
+      <section className="py-8 border-b border-border bg-white">
         <div className="container mx-auto px-4">
           <div className="flex flex-wrap gap-2 justify-center">
             {categories.map((category) => (

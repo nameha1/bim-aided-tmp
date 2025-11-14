@@ -42,8 +42,8 @@ interface ContactInquiry {
   status: string;
   admin_notes: string | null;
   assigned_to: string | null;
-  created_at: string;
-  updated_at: string;
+  created_at: any; // Can be Firestore Timestamp or Date string
+  updated_at: any; // Can be Firestore Timestamp or Date string
   employees?: {
     first_name: string;
     last_name: string;
@@ -240,7 +240,7 @@ const ContactInquiriesManager = () => {
             <CardTitle className="text-sm font-medium text-muted-foreground">New</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{stats.new}</div>
+            <div className="text-2xl font-bold text-cyan-500">{stats.new}</div>
           </CardContent>
         </Card>
       </div>
@@ -275,41 +275,46 @@ const ContactInquiriesManager = () => {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  inquiries.map((inquiry) => (
-                    <TableRow key={inquiry.id}>
-                      <TableCell>
-                        {format(new Date(inquiry.created_at), "MMM d, yyyy")}
-                      </TableCell>
-                      <TableCell className="font-medium">{inquiry.name}</TableCell>
-                      <TableCell>
-                        <div className="space-y-1 text-sm">
-                          <div className="flex items-center gap-1">
-                            <Mail size={12} />
-                            <a href={`mailto:${inquiry.email}`} className="text-primary hover:underline">
-                              {inquiry.email}
-                            </a>
+                  inquiries.map((inquiry) => {
+                    // Convert Firestore Timestamp to Date
+                    const createdDate = inquiry.created_at?.toDate ? inquiry.created_at.toDate() : new Date(inquiry.created_at);
+                    
+                    return (
+                      <TableRow key={inquiry.id}>
+                        <TableCell>
+                          {format(createdDate, "MMM d, yyyy")}
+                        </TableCell>
+                        <TableCell className="font-medium">{inquiry.name}</TableCell>
+                        <TableCell>
+                          <div className="space-y-1 text-sm">
+                            <div className="flex items-center gap-1">
+                              <Mail size={12} />
+                              <a href={`mailto:${inquiry.email}`} className="text-primary hover:underline">
+                                {inquiry.email}
+                              </a>
+                            </div>
+                            <div className="flex items-center gap-1 text-muted-foreground">
+                              <Phone size={12} />
+                              {inquiry.phone}
+                            </div>
                           </div>
-                          <div className="flex items-center gap-1 text-muted-foreground">
-                            <Phone size={12} />
-                            {inquiry.phone}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="max-w-[200px] truncate">
-                        {inquiry.subject}
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleViewDetails(inquiry)}
-                        >
-                          <Eye size={16} className="mr-1" />
-                          View
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
+                        </TableCell>
+                        <TableCell className="max-w-[200px] truncate">
+                          {inquiry.subject}
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleViewDetails(inquiry)}
+                          >
+                            <Eye size={16} className="mr-1" />
+                            View
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
                 )}
               </TableBody>
             </Table>
@@ -337,7 +342,12 @@ const ContactInquiriesManager = () => {
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Date</label>
                   <p className="text-sm">
-                    {format(new Date(selectedInquiry.created_at), "PPP")}
+                    {format(
+                      selectedInquiry.created_at?.toDate 
+                        ? selectedInquiry.created_at.toDate() 
+                        : new Date(selectedInquiry.created_at), 
+                      "PPP"
+                    )}
                   </p>
                 </div>
                 <div>

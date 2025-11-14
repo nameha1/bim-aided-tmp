@@ -38,14 +38,9 @@ const Navigation = () => {
           <Link href="/" className="flex items-center gap-2 order-1 md:order-none">
             <img 
               src="/Logo-BIMaided.png" 
-              alt="BIMaided Logo" 
-              className="h-10 md:h-12 w-auto"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none';
-                e.currentTarget.nextElementSibling?.classList.remove('hidden');
-              }}
+              alt="BIM aided Logo" 
+              className="h-12 md:h-14 w-auto object-contain"
             />
-            <span className="text-2xl font-bold text-primary hidden">BIMaided</span>
           </Link>
 
           {/* Desktop Navigation - Center */}
