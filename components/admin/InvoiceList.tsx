@@ -138,8 +138,8 @@ export default function InvoiceList({ onCreateNew }: InvoiceListProps) {
         body: (invoice.items || []).map((item) => [
           item.description || "",
           (item.quantity || 0).toString(),
-          `₹${(item.rate || 0).toFixed(2)}`,
-          `₹${(item.amount || 0).toFixed(2)}`,
+          `৳${(item.rate || 0).toFixed(2)}`,
+          `৳${(item.amount || 0).toFixed(2)}`,
         ]),
         theme: "grid",
         headStyles: {
@@ -168,16 +168,16 @@ export default function InvoiceList({ onCreateNew }: InvoiceListProps) {
       
       doc.setTextColor(100);
       doc.text("Subtotal:", summaryX, finalY);
-      doc.text(`₹${(invoice.subtotal || 0).toFixed(2)}`, 185, finalY, { align: "right" });
+      doc.text(`৳${(invoice.subtotal || 0).toFixed(2)}`, 185, finalY, { align: "right" });
       
       doc.text(`Tax (${invoice.taxRate || 0}%):`, summaryX, finalY + 7);
-      doc.text(`₹${(invoice.taxAmount || 0).toFixed(2)}`, 185, finalY + 7, { align: "right" });
+      doc.text(`৳${(invoice.taxAmount || 0).toFixed(2)}`, 185, finalY + 7, { align: "right" });
       
       doc.setFontSize(12);
       doc.setTextColor(0);
       doc.setFont(undefined, "bold");
       doc.text("Total:", summaryX, finalY + 15);
-      doc.text(`₹${(invoice.total || 0).toFixed(2)}`, 185, finalY + 15, { align: "right" });
+      doc.text(`৳${(invoice.total || 0).toFixed(2)}`, 185, finalY + 15, { align: "right" });
 
       // Notes
       if (invoice.notes) {
@@ -394,7 +394,7 @@ export default function InvoiceList({ onCreateNew }: InvoiceListProps) {
                     <TableCell>
                       {new Date(invoice.dueDate).toLocaleDateString()}
                     </TableCell>
-                    <TableCell>₹{(invoice.total || 0).toFixed(2)}</TableCell>
+                    <TableCell>৳{(invoice.total || 0).toFixed(2)}</TableCell>
                     <TableCell>
                       <Badge className={getStatusColor(invoice.status)}>
                         {invoice.status}

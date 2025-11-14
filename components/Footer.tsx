@@ -3,7 +3,7 @@ import { Mail, Phone, MapPin } from "lucide-react";
 
 const Footer = () => {
   return (
-    <footer className="relative bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-t border-sky-500/20 mt-20 overflow-hidden">
+    <footer className="relative bg-gradient-to-br from-cyan-900 via-cyan-800 to-cyan-900 border-t border-sky-500/20 mt-20 overflow-hidden">
       {/* Background Pattern */}
       <div className="absolute inset-0 opacity-5 bg-grid-pattern" />
       
@@ -69,14 +69,14 @@ const Footer = () => {
               <div className="flex items-start gap-2 text-sm text-gray-300">
                 <Phone size={16} className="text-sky-400 mt-0.5 flex-shrink-0" />
                 <div className="flex flex-col gap-1">
-                  <span>+880 1308-230988</span>
-                  <span>+880 1672-843230</span>
-                  <span>+880 1737-727342</span>
+                  <span className="whitespace-nowrap">+880 1308-230988</span>
+                  <span className="whitespace-nowrap">+880 1672-843230</span>
+                  <span className="whitespace-nowrap">+880 1737-727342</span>
                 </div>
               </div>
               <div className="flex items-start gap-2 text-sm text-gray-300">
                 <MapPin size={16} className="text-sky-400 mt-0.5 flex-shrink-0" />
-                <span>ECB, Dhaka Cantonment, Dhaka-1206, Bangladesh</span>
+                <span className="break-words">House# 7, Level 1, Road 1/B, Dhaka 1229</span>
               </div>
               <div className="text-sm text-gray-300 mt-2">
                 <p className="font-medium text-white">Open: Saturday-Thursday</p>
@@ -88,6 +88,17 @@ const Footer = () => {
 
         <div className="border-t border-sky-500/20 mt-8 pt-8 text-center text-sm text-gray-400">
           <p>&copy; {new Date().getFullYear()} BIMaided. All rights reserved.</p>
+          <p className="mt-2">
+            Developed by{" "}
+            <a 
+              href="https://www.zeelto.com" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-sky-400 hover:text-sky-300 transition-colors"
+            >
+              Zeelto
+            </a>
+          </p>
         </div>
       </div>
     </footer>

@@ -302,8 +302,8 @@ const InvoiceGenerator = ({ onSave }: InvoiceGeneratorProps = {}) => {
         doc.setFont("helvetica", "normal");
         doc.setTextColor(107, 114, 128);
         doc.text(item.quantity.toString(), tableX + 88, itemY);
-        doc.text(`$${item.rate.toFixed(2)}`, tableX + 116, itemY, { align: "right" });
-        doc.text(`$${item.amount.toFixed(2)}`, pageWidth - 28, itemY, { align: "right" });
+        doc.text(`৳${item.rate.toFixed(2)}`, tableX + 116, itemY, { align: "right" });
+        doc.text(`৳${item.amount.toFixed(2)}`, pageWidth - 28, itemY, { align: "right" });
 
         doc.setFont("helvetica", "bold");
         itemY += 12;
@@ -326,13 +326,13 @@ const InvoiceGenerator = ({ onSave }: InvoiceGeneratorProps = {}) => {
       doc.setTextColor(24, 24, 27);
       doc.text("Subtotal", tableX + 5, totalsY + 6);
       doc.setTextColor(107, 114, 128);
-      doc.text(`$${calculateSubtotal().toFixed(2)}`, pageWidth - 28, totalsY + 6, { align: "right" });
+      doc.text(`৳${calculateSubtotal().toFixed(2)}`, pageWidth - 28, totalsY + 6, { align: "right" });
 
       // Tax
       doc.setTextColor(24, 24, 27);
       doc.text(`Tax (${invoiceData.taxRate}%)`, tableX + 5, totalsY + 12);
       doc.setTextColor(107, 114, 128);
-      doc.text(`$${calculateTax().toFixed(2)}`, pageWidth - 28, totalsY + 12, { align: "right" });
+      doc.text(`৳${calculateTax().toFixed(2)}`, pageWidth - 28, totalsY + 12, { align: "right" });
 
       // Total Due (highlighted with gray background)
       const totalDueY = tableY + tableHeight - 8;
@@ -345,7 +345,7 @@ const InvoiceGenerator = ({ onSave }: InvoiceGeneratorProps = {}) => {
       doc.setFont("helvetica", "bold");
       doc.setTextColor(79, 70, 229); // indigo-600
       doc.text("Total due", tableX + 5, totalDueY + 2);
-      doc.text(`US$ ${calculateTotal().toFixed(2)}`, pageWidth - 28, totalDueY + 2, { align: "right" });
+      doc.text(`BDT ৳${calculateTotal().toFixed(2)}`, pageWidth - 28, totalDueY + 2, { align: "right" });
 
       // === PAYMENT TERMS (with bullet) ===
       doc.setFontSize(8);
@@ -510,7 +510,7 @@ const InvoiceGenerator = ({ onSave }: InvoiceGeneratorProps = {}) => {
                     />
                   </div>
                   <div className="col-span-2">
-                    {index === 0 && <Label className="text-xs mb-1">Rate ($)</Label>}
+                    {index === 0 && <Label className="text-xs mb-1">Rate (৳)</Label>}
                     <Input
                       type="number"
                       value={item.rate}
@@ -522,7 +522,7 @@ const InvoiceGenerator = ({ onSave }: InvoiceGeneratorProps = {}) => {
                   <div className="col-span-2">
                     {index === 0 && <Label className="text-xs mb-1">Amount</Label>}
                     <Input
-                      value={`$${item.amount.toFixed(2)}`}
+                      value={`৳${item.amount.toFixed(2)}`}
                       disabled
                       className="bg-gray-50"
                     />
@@ -565,17 +565,17 @@ const InvoiceGenerator = ({ onSave }: InvoiceGeneratorProps = {}) => {
                 <div className="w-64 space-y-2">
                   <div className="flex justify-between">
                     <span className="text-sm text-gray-600">Subtotal:</span>
-                    <span className="font-medium">${calculateSubtotal().toFixed(2)}</span>
+                    <span className="font-medium">৳{calculateSubtotal().toFixed(2)}</span>
                   </div>
                   {invoiceData.taxRate > 0 && (
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-600">Tax ({invoiceData.taxRate}%):</span>
-                      <span className="font-medium">${calculateTax().toFixed(2)}</span>
+                      <span className="font-medium">৳{calculateTax().toFixed(2)}</span>
                     </div>
                   )}
                   <div className="flex justify-between text-lg font-bold border-t pt-2">
                     <span>Total:</span>
-                    <span>${calculateTotal().toFixed(2)}</span>
+                    <span>৳{calculateTotal().toFixed(2)}</span>
                   </div>
                 </div>
               </div>

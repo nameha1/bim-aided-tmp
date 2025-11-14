@@ -35,9 +35,9 @@ const ProjectDetailsDialog = ({ project, open, onOpenChange }: ProjectDetailsDia
 
   const formatCurrency = (value: number | null | undefined) => {
     if (!value) return "N/A";
-    return new Intl.NumberFormat("en-US", {
+    return new Intl.NumberFormat("en-BD", {
       style: "currency",
-      currency: "USD",
+      currency: "BDT",
       maximumFractionDigits: 0,
     }).format(value);
   };
