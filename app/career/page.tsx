@@ -17,24 +17,59 @@ export default function Career() {
 
   useEffect(() => {
     const fetchCareerPostings = async () => {
-      // TODO: Migrate to Firebase - using fallback data for now
-      // Fallback to static data
-      setOpenings([
-        {
-          title: "Senior BIM Manager",
-          department: "BIM Services",
-          location: "Remote",
-          employment_type: "full_time",
-          description: "Lead BIM coordination and implementation for large-scale projects.",
-        },
-        {
-          title: "Revit Modeler",
-          department: "Modeling",
-          location: "Hybrid",
-          employment_type: "full_time",
-          description: "Create detailed architectural and structural BIM models.",
-        },
-      ]);
+      try {
+        // Import Firebase functions
+        const { getDocuments } = await import('@/lib/firebase/firestore');
+        const { where, orderBy } = await import('firebase/firestore');
+        
+        // Fetch active job postings from Firebase
+        const { data, error } = await getDocuments('job_postings', [
+          where('status', '==', 'active'),
+          orderBy('created_at', 'desc')
+        ]);
+
+        if (error) {
+          console.error('Error fetching job postings:', error);
+          // Fallback to static data on error
+          setOpenings([
+            {
+              title: "Senior BIM Manager",
+              department: "BIM Services",
+              location: "Remote",
+              employment_type: "full_time",
+              description: "Lead BIM coordination and implementation for large-scale projects.",
+            },
+            {
+              title: "Revit Modeler",
+              department: "Modeling",
+              location: "Hybrid",
+              employment_type: "full_time",
+              description: "Create detailed architectural and structural BIM models.",
+            },
+          ]);
+        } else {
+          setOpenings(data || []);
+        }
+      } catch (error) {
+        console.error('Error in fetchCareerPostings:', error);
+        // Fallback to static data
+        setOpenings([
+          {
+            title: "Senior BIM Manager",
+            department: "BIM Services",
+            location: "Remote",
+            employment_type: "full_time",
+            description: "Lead BIM coordination and implementation for large-scale projects.",
+          },
+          {
+            title: "Revit Modeler",
+            department: "Modeling",
+            location: "Hybrid",
+            employment_type: "full_time",
+            description: "Create detailed architectural and structural BIM models.",
+          },
+        ]);
+      }
     };
 
     fetchCareerPostings();

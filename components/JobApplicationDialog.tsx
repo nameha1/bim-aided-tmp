@@ -5,8 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Upload, X, FileText } from "lucide-react";
-// TODO: Migrate to Firebase
-import { supabase } from "@/lib/supabase-stub";
+import { createDocument } from "@/lib/firebase/firestore";
 
 interface JobApplicationDialogProps {
   isOpen: boolean;
@@ -78,35 +77,52 @@ const JobApplicationDialog = ({ isOpen, onClose, jobTitle, jobId }: JobApplicati
     setIsSubmitting(true);
 
     try {
-      // Upload CV to Supabase Storage
+      // Upload CV to Cloudflare R2
       const fileExt = cvFile.name.split(".").pop();
       const fileName = `${Date.now()}_${formData.name.replace(/\s+/g, "_")}.${fileExt}`;
-      const filePath = `applications/${fileName}`;
+      
+      // Convert file to base64 for upload
+      const reader = new FileReader();
+      const fileData = await new Promise<string>((resolve, reject) => {
+        reader.onloadend = () => {
+          const base64 = reader.result as string;
+          resolve(base64.split(',')[1]); // Remove data:mime;base64, prefix
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(cvFile);
+      });
 
-      const { error: uploadError } = await supabase.storage
-        .from("cvs")
-        .upload(filePath, cvFile);
+      // Upload to R2 via API route
+      const uploadResponse = await fetch('/api/upload', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          file: fileData,
+          fileName: `applications/${fileName}`,
+          contentType: cvFile.type,
+        }),
+      });
 
-      if (uploadError) {
-        throw uploadError;
+      if (!uploadResponse.ok) {
+        const errorData = await uploadResponse.json();
+        throw new Error(errorData.error || 'Failed to upload CV');
       }
 
-      // Get public URL
-      const { data: urlData } = supabase.storage
-        .from("cvs")
-        .getPublicUrl(filePath);
+      const { url: cvUrl } = await uploadResponse.json();
 
-      // Save application to database
-      const { error: dbError } = await supabase
-        .from("job_applications")
-        .insert({
-          job_posting_id: jobId,
-          applicant_name: formData.name,
-          applicant_email: formData.email,
-          applicant_phone: formData.phone,
-          cv_url: urlData.publicUrl,
-          status: "pending",
-        });
+      // Save application to Firestore
+      const { error: dbError } = await createDocument('job_applications', {
+        job_posting_id: jobId || null,
+        job_title: jobTitle,
+        applicant_name: formData.name,
+        applicant_email: formData.email,
+        applicant_phone: formData.phone,
+        cv_url: cvUrl,
+        status: 'pending',
+        created_at: new Date(),
+      });
 
       if (dbError) {
         throw dbError;

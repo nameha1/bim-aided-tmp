@@ -3,8 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-// TODO: Migrate to Firebase
-import { supabase } from "@/lib/supabase-stub";
+import { getDocuments, updateDocument, deleteDocument } from "@/lib/firebase/firestore";
+import { orderBy, where } from "firebase/firestore";
 import {
   Table,
   TableBody,
@@ -72,31 +72,48 @@ const ApplicationManager = () => {
   }, []);
 
   const fetchJobs = async () => {
-    const { data } = await (supabase as any)
-      .from("job_postings")
-      .select("id, title")
-      .eq("status", "active")
-      .order("title");
+    try {
+      const { data } = await getDocuments("job_postings", [
+        where("status", "==", "active")
+      ]);
 
-    if (data) {
-      setJobs(data);
+      if (data) {
+        setJobs(data);
+      }
+    } catch (error) {
+      console.error("Error fetching jobs:", error);
     }
   };
 
   const fetchApplications = async () => {
     setLoading(true);
     try {
-      const { data, error } = await (supabase as any)
-        .from("job_applications")
-        .select(`
-          *,
-          job_postings(title)
-        `)
-        .order("created_at", { ascending: false });
+      const { data, error } = await getDocuments("job_applications", [
+        orderBy("created_at", "desc")
+      ]);
 
       if (error) throw error;
 
-      setApplications(data || []);
+      // Fetch job titles for each application
+      const applicationsWithJobTitles = await Promise.all(
+        (data || []).map(async (app: any) => {
+          if (app.job_posting_id) {
+            const { data: jobData } = await getDocuments("job_postings", [
+              where("__name__", "==", app.job_posting_id)
+            ]);
+            return {
+              ...app,
+              job_postings: jobData?.[0] ? { title: jobData[0].title } : { title: app.job_title || "N/A" }
+            };
+          }
+          return {
+            ...app,
+            job_postings: { title: app.job_title || "N/A" }
+          };
+        })
+      );
+
+      setApplications(applicationsWithJobTitles);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -123,10 +140,9 @@ const ApplicationManager = () => {
 
   const handleUpdateStatus = async (applicationId: string, newStatus: string) => {
     try {
-      const { error } = await supabase
-        .from("job_applications")
-        .update({ status: newStatus })
-        .eq("id", applicationId);
+      const { error } = await updateDocument("job_applications", applicationId, {
+        status: newStatus
+      });
 
       if (error) throw error;
 
@@ -150,23 +166,18 @@ const ApplicationManager = () => {
     if (!applicationToDelete) return;
 
     try {
-      // Delete CV file from storage
-      const cvPath = applicationToDelete.cv_url.split("/").pop();
-      if (cvPath) {
-        await supabase.storage.from("cvs").remove([`applications/${cvPath}`]);
-      }
+      // Note: CV files in R2 should be managed separately via API if needed
+      // For now, we'll just delete the database record
+      // The CV files can be cleaned up periodically or kept for records
 
-      // Delete application record
-      const { error } = await supabase
-        .from("job_applications")
-        .delete()
-        .eq("id", applicationToDelete.id);
+      // Delete application record from Firestore
+      const { error } = await deleteDocument("job_applications", applicationToDelete.id);
 
       if (error) throw error;
 
       toast({
         title: "Application Deleted",
-        description: "Application and CV have been permanently deleted.",
+        description: "Application has been permanently deleted.",
       });
 
       fetchApplications();
