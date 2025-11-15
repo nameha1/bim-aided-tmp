@@ -36,7 +36,6 @@ export default function AdminDashboard() {
     totalApplications: 0,
   });
   const [refreshKey, setRefreshKey] = useState(0);
-  const [isReady, setIsReady] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
   
@@ -46,34 +45,7 @@ export default function AdminDashboard() {
     redirectTo: '/login'
   });
 
-  // Show loading state while checking authentication
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-lg text-muted-foreground">Verifying authentication...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // If not authenticated or not admin, don't render (useAuth will redirect)
-  if (!isAuthenticated || role !== 'admin') {
-    return null;
-  }
-
-  // Wait for component to be ready before fetching data
-  useEffect(() => {
-    setIsReady(true);
-  }, []);
-
-  useEffect(() => {
-    if (isReady) {
-      fetchStats();
-    }
-  }, [refreshKey, isReady]);
-
+  // Fetch stats - memoized to prevent infinite loops
   const fetchStats = async () => {
     try {
       // Import Firebase functions dynamically to avoid server-side issues
@@ -118,6 +90,14 @@ export default function AdminDashboard() {
     }
   };
 
+  // Fetch stats when authenticated and on refresh
+  useEffect(() => {
+    if (isAuthenticated && role === 'admin') {
+      fetchStats();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshKey, isAuthenticated, role]);
+
   const handleEmployeeUpdate = () => {
     fetchStats();
     setRefreshKey((prev) => prev + 1);
@@ -135,6 +115,23 @@ export default function AdminDashboard() {
       console.error("Logout error:", error);
     }
   };
+
+  // Show loading state while checking authentication
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-lg text-muted-foreground">Verifying authentication...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If not authenticated or not admin, don't render (useAuth will redirect)
+  if (!isAuthenticated || role !== 'admin') {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 overflow-x-hidden max-w-[100vw]">
