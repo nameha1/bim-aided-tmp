@@ -96,7 +96,8 @@ const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
         router.replace("/login");
       }
     }
-  }, [user, userRole, loading, authChecked, requiredRole, router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, userRole, loading, authChecked, requiredRole]);
 
   if (loading || !authChecked || !user || (requiredRole && userRole !== requiredRole)) {
     return (
