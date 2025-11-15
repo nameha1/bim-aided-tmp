@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 
 interface UseAuthOptions {
@@ -14,32 +14,51 @@ export function useAuth(options: UseAuthOptions = {}) {
   const [user, setUser] = useState<any>(null);
   const [role, setRole] = useState<string | null>(null);
   const router = useRouter();
+  const hasChecked = useRef(false);
+  const isRedirecting = useRef(false);
 
   useEffect(() => {
+    // Prevent multiple checks
+    if (hasChecked.current || isRedirecting.current) {
+      return;
+    }
+
+    hasChecked.current = true;
+
     async function checkAuth() {
       try {
         // Check session
-        const response = await fetch('/api/auth/session');
+        const response = await fetch('/api/auth/session', {
+          credentials: 'include',
+          cache: 'no-store'
+        });
         const data = await response.json();
 
         if (!data.session || !data.user) {
           // Not authenticated
           setIsAuthenticated(false);
-          if (options.redirectTo !== undefined) {
-            router.push(options.redirectTo || '/login');
+          setIsLoading(false);
+          if (options.redirectTo !== undefined && !isRedirecting.current) {
+            isRedirecting.current = true;
+            router.replace(options.redirectTo || '/login');
           }
           return;
         }
 
         // Get user role
-        const roleResponse = await fetch(`/api/user-roles/${data.user.uid}`);
+        const roleResponse = await fetch(`/api/user-roles/${data.user.uid}`, {
+          credentials: 'include',
+          cache: 'no-store'
+        });
         const roleData = await roleResponse.json();
 
         if (!roleResponse.ok || !roleData.role) {
           // No role assigned
           setIsAuthenticated(false);
-          if (options.redirectTo !== undefined) {
-            router.push('/login');
+          setIsLoading(false);
+          if (options.redirectTo !== undefined && !isRedirecting.current) {
+            isRedirecting.current = true;
+            router.replace('/login');
           }
           return;
         }
@@ -47,10 +66,15 @@ export function useAuth(options: UseAuthOptions = {}) {
         // Check if user has required role
         if (options.requiredRole && roleData.role !== options.requiredRole) {
           // Wrong role, redirect to appropriate dashboard
-          if (roleData.role === 'admin') {
-            router.push('/admin');
-          } else {
-            router.push('/employee');
+          setIsAuthenticated(false);
+          setIsLoading(false);
+          if (!isRedirecting.current) {
+            isRedirecting.current = true;
+            if (roleData.role === 'admin') {
+              router.replace('/admin');
+            } else {
+              router.replace('/employee');
+            }
           }
           return;
         }
@@ -59,19 +83,20 @@ export function useAuth(options: UseAuthOptions = {}) {
         setIsAuthenticated(true);
         setUser(data.user);
         setRole(roleData.role);
+        setIsLoading(false);
       } catch (error) {
         console.error('Auth check error:', error);
         setIsAuthenticated(false);
-        if (options.redirectTo !== undefined) {
-          router.push(options.redirectTo || '/login');
-        }
-      } finally {
         setIsLoading(false);
+        if (options.redirectTo !== undefined && !isRedirecting.current) {
+          isRedirecting.current = true;
+          router.replace(options.redirectTo || '/login');
+        }
       }
     }
 
     checkAuth();
-  }, [router, options.requiredRole, options.redirectTo]);
+  }, []); // Empty dependency array - only run once
 
   return { isLoading, isAuthenticated, user, role };
 }
