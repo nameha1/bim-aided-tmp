@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 import { Users, UserPlus, Calendar, LogOut, Briefcase, ClipboardList, Globe, DollarSign, Menu, X, FileText, Settings, Clock } from "lucide-react";
 import AddEmployeeForm from "@/components/admin/AddEmployeeForm";
 import EmployeeList from "@/components/admin/EmployeeList";
@@ -35,33 +36,37 @@ export default function AdminDashboard() {
     totalApplications: 0,
   });
   const [refreshKey, setRefreshKey] = useState(0);
-  const [isAuthReady, setIsAuthReady] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
 
-  // Wait for auth to be ready before fetching data
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const { getCurrentUser } = await import("@/lib/firebase/auth");
-        const user = getCurrentUser();
-        if (user) {
-          setIsAuthReady(true);
-        }
-      } catch (error) {
-        console.error("Auth check error:", error);
-      }
-    };
-    
-    const timer = setTimeout(checkAuth, 1000); // Wait 1 second for auth to initialize
-    return () => clearTimeout(timer);
-  }, []);
+  // Use authentication hook with admin role requirement
+  const { isLoading, isAuthenticated, role } = useAuth({
+    requiredRole: 'admin',
+    redirectTo: '/login'
+  });
+
+  // Show loading screen while checking authentication
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Verifying authentication...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If not authenticated, return null (useAuth hook will handle redirect)
+  if (!isAuthenticated) {
+    return null;
+  }
 
   useEffect(() => {
-    if (isAuthReady) {
+    if (isAuthenticated) {
       fetchStats();
     }
-  }, [refreshKey, isAuthReady]);
+  }, [refreshKey, isAuthenticated]);
 
   const fetchStats = async () => {
     try {

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 import { User, Calendar, FileText, LogOut, Briefcase, Users, ClipboardList, CheckCircle, History, PartyPopper, ListTodo } from "lucide-react";
 import EmployeeProfile from "@/components/employee/EmployeeProfile";
 import LeaveRequestForm from "@/components/employee/LeaveRequestForm";
@@ -26,6 +27,29 @@ export default function EmployeeDashboard() {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const { toast } = useToast();
+
+  // Use authentication hook with employee role requirement
+  const { isLoading: authLoading, isAuthenticated, user: authUser } = useAuth({
+    requiredRole: 'employee',
+    redirectTo: '/login'
+  });
+
+  // Show loading screen while checking authentication
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Verifying authentication...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If not authenticated, return null (useAuth hook will handle redirect)
+  if (!isAuthenticated) {
+    return null;
+  }
 
   useEffect(() => {
     let isMounted = true;
