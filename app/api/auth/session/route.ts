@@ -73,16 +73,21 @@ export async function POST(request: NextRequest) {
 
     // Create session cookie (expires in 14 days)
     const expiresIn = 60 * 60 * 24 * 14 * 1000; // 14 days in milliseconds
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    console.log('[Session] Creating session cookie, production:', isProduction);
 
     const response = NextResponse.json({ success: true });
     
     response.cookies.set('firebase-token', idToken, {
       maxAge: expiresIn / 1000,
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: isProduction, // Only use secure in production (requires HTTPS)
       sameSite: 'lax',
       path: '/',
     });
+
+    console.log('[Session] Session cookie created successfully');
 
     return response;
   } catch (error: any) {

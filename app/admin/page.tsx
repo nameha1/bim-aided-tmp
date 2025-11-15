@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 import { Users, UserPlus, Calendar, LogOut, Briefcase, ClipboardList, Globe, DollarSign, Menu, X, FileText, Settings, Clock } from "lucide-react";
 import AddEmployeeForm from "@/components/admin/AddEmployeeForm";
 import EmployeeList from "@/components/admin/EmployeeList";
@@ -38,6 +39,29 @@ export default function AdminDashboard() {
   const [isReady, setIsReady] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
+  
+  // Authentication check - redirect if not authenticated or not admin
+  const { isLoading: authLoading, isAuthenticated, role } = useAuth({
+    requiredRole: 'admin',
+    redirectTo: '/login'
+  });
+
+  // Show loading state while checking authentication
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-lg text-muted-foreground">Verifying authentication...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If not authenticated or not admin, don't render (useAuth will redirect)
+  if (!isAuthenticated || role !== 'admin') {
+    return null;
+  }
 
   // Wait for component to be ready before fetching data
   useEffect(() => {

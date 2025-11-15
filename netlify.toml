@@ -4,6 +4,7 @@
 
 [build.environment]
   NODE_VERSION = "20.18.0"
+  NODE_ENV = "production"
   # Skip secrets scanning in build artifacts
   # NEXT_PUBLIC_* vars are intentionally in client bundles (they're public)
   # Documentation files with project IDs removed from repo
@@ -11,3 +12,12 @@
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
+
+# Ensure middleware runs on protected routes
+[[edge_functions]]
+  path = "/admin/*"
+  function = "middleware"
+
+[[edge_functions]]
+  path = "/employee/*"
+  function = "middleware"
