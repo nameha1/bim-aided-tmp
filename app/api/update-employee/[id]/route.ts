@@ -50,6 +50,7 @@ export async function PUT(
       emergencyPersonContact,
       emergencyPersonAddress,
       profileImageUrl,
+      documentUrls,
     } = body;
 
     // Update employee document in Firestore
@@ -81,6 +82,7 @@ export async function PUT(
       emergency_person_contact: emergencyPersonContact || null,
       emergency_person_address: emergencyPersonAddress || null,
       profileImageUrl: profileImageUrl || null,
+      document_urls: documentUrls || [],
       updated_at: new Date().toISOString(),
     };
 

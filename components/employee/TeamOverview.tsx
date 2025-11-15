@@ -18,12 +18,33 @@ const TeamOverview = ({ managerId }: TeamOverviewProps) => {
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
   const [teamAttendance, setTeamAttendance] = useState<any[]>([]);
   const [teamAssignments, setTeamAssignments] = useState<any[]>([]);
+  const [pendingAppealsCount, setPendingAppealsCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
     fetchTeamData();
+    fetchPendingAppeals();
   }, [managerId]);
+
+  const fetchPendingAppeals = async () => {
+    try {
+      // Fetch leave requests with pending appeals
+      const { data: leaveRequests } = await getDocuments("leave_requests", [
+        where("supervisor_id", "==", managerId),
+        where("status", "==", "rejected")
+      ]);
+
+      if (leaveRequests) {
+        const appealsCount = leaveRequests.filter((req: any) => 
+          req.appeal_message && !req.appeal_reviewed
+        ).length;
+        setPendingAppealsCount(appealsCount);
+      }
+    } catch (error) {
+      console.error("Error fetching appeals count:", error);
+    }
+  };
 
   const fetchTeamData = async () => {
     setLoading(true);
@@ -166,7 +187,14 @@ const TeamOverview = ({ managerId }: TeamOverviewProps) => {
           <TabsTrigger value="attendance">Today's Attendance</TabsTrigger>
           <TabsTrigger value="members">Team Members</TabsTrigger>
           <TabsTrigger value="assignments">Assignments</TabsTrigger>
-          <TabsTrigger value="leave-approvals">Leave Approvals</TabsTrigger>
+          <TabsTrigger value="leave-approvals" className="gap-2">
+            Leave Approvals
+            {pendingAppealsCount > 0 && (
+              <Badge variant="destructive" className="ml-1 px-1.5 py-0 text-xs">
+                {pendingAppealsCount}
+              </Badge>
+            )}
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="attendance">
@@ -314,7 +342,7 @@ const TeamOverview = ({ managerId }: TeamOverviewProps) => {
         </TabsContent>
 
         <TabsContent value="leave-approvals">
-          <SupervisorLeaveApprovals supervisorId={managerId} />
+          <SupervisorLeaveApprovals supervisorId={managerId} onUpdate={fetchPendingAppeals} />
         </TabsContent>
       </Tabs>
     </div>

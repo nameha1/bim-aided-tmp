@@ -182,7 +182,6 @@ const collections = {
   assignments: [],
   assignment_members: [],
   transactions: [],
-  invoices: [],
   ip_whitelist: [],
   holidays: [
     {

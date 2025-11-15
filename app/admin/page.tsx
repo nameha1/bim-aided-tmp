@@ -23,7 +23,7 @@ import AttendanceRecords from "@/components/admin/AttendanceRecords";
 import ContactInquiriesManager from "@/components/admin/ContactInquiriesManager";
 import PayrollManager from "@/components/admin/PayrollManager";
 import { TransactionManager } from "@/components/admin/TransactionManager";
-import InvoiceTabView from "@/components/admin/InvoiceTabView";
+import InvoiceManager from "@/components/admin/InvoiceManager";
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("employees");
@@ -261,6 +261,17 @@ export default function AdminDashboard() {
               <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-2">Finance</h2>
               <nav className="space-y-1">
                 <Button
+                  variant={activeTab === "invoices" ? "default" : "ghost"}
+                  className={`w-full justify-start gap-3 ${activeTab === "invoices" ? "bg-cyan-500 text-white hover:bg-cyan-600" : "hover:bg-cyan-50 hover:text-cyan-700 dark:hover:bg-slate-800"}`}
+                  onClick={() => {
+                    setActiveTab("invoices");
+                    setIsSidebarOpen(false);
+                  }}
+                >
+                  <FileText size={18} />
+                  <span>Invoices</span>
+                </Button>
+                <Button
                   variant={activeTab === "payroll" ? "default" : "ghost"}
                   className={`w-full justify-start gap-3 ${activeTab === "payroll" ? "bg-cyan-500 text-white hover:bg-cyan-600" : "hover:bg-cyan-50 hover:text-cyan-700 dark:hover:bg-slate-800"}`}
                   onClick={() => {
@@ -281,17 +292,6 @@ export default function AdminDashboard() {
                 >
                   <DollarSign size={18} />
                   <span>Transactions</span>
-                </Button>
-                <Button
-                  variant={activeTab === "invoices" ? "default" : "ghost"}
-                  className={`w-full justify-start gap-3 ${activeTab === "invoices" ? "bg-cyan-500 text-white hover:bg-cyan-600" : "hover:bg-cyan-50 hover:text-cyan-700 dark:hover:bg-slate-800"}`}
-                  onClick={() => {
-                    setActiveTab("invoices");
-                    setIsSidebarOpen(false);
-                  }}
-                >
-                  <FileText size={18} />
-                  <span>Invoices</span>
                 </Button>
               </nav>
             </div>
@@ -465,6 +465,7 @@ export default function AdminDashboard() {
             <TabsTrigger value="employees">Employees</TabsTrigger>
             <TabsTrigger value="add-employee">Add Employee</TabsTrigger>
             <TabsTrigger value="attendance">Attendance</TabsTrigger>
+            <TabsTrigger value="invoices">Invoices</TabsTrigger>
             <TabsTrigger value="payroll">Payroll</TabsTrigger>
             <TabsTrigger value="ip-whitelist">IP Whitelist</TabsTrigger>
             <TabsTrigger value="leave-requests">Leave Requests</TabsTrigger>
@@ -524,6 +525,10 @@ export default function AdminDashboard() {
                 <AttendanceRecords key={refreshKey} />
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="invoices">
+            <InvoiceManager />
           </TabsContent>
 
           <TabsContent value="payroll">
@@ -649,10 +654,6 @@ export default function AdminDashboard() {
 
           <TabsContent value="transactions">
             <TransactionManager />
-          </TabsContent>
-
-          <TabsContent value="invoices">
-            <InvoiceTabView />
           </TabsContent>
         </Tabs>
         </main>

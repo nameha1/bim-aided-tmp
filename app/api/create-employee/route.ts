@@ -218,6 +218,7 @@ export async function POST(req: NextRequest) {
         displayName: `${firstName} ${lastName}`,
         role: 'employee',
         employee_id: employeeRef.id,
+        auth_uid: authUser.uid, // Store for easier querying
         created_at: new Date().toISOString(),
       });
       console.log('User document created');

@@ -10,9 +10,10 @@ import { where } from "firebase/firestore";
 
 interface SupervisorLeaveApprovalsProps {
   supervisorId: string;
+  onUpdate?: () => void;
 }
 
-const SupervisorLeaveApprovals = ({ supervisorId }: SupervisorLeaveApprovalsProps) => {
+const SupervisorLeaveApprovals = ({ supervisorId, onUpdate }: SupervisorLeaveApprovalsProps) => {
   const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
@@ -62,6 +63,11 @@ const SupervisorLeaveApprovals = ({ supervisorId }: SupervisorLeaveApprovalsProp
         });
 
         setRequests(requestsWithEmployees);
+      }
+      
+      // Call onUpdate callback to refresh parent component
+      if (onUpdate) {
+        onUpdate();
       }
     } catch (error: any) {
       console.error("Error fetching leave requests:", error);
@@ -145,7 +151,8 @@ const SupervisorLeaveApprovals = ({ supervisorId }: SupervisorLeaveApprovalsProp
   };
 
   const pendingRequests = requests.filter(r => r.status === "pending_supervisor");
-  const processedRequests = requests.filter(r => r.status !== "pending_supervisor");
+  const appealRequests = requests.filter(r => r.status === "rejected" && r.appeal_message && !r.appeal_reviewed);
+  const processedRequests = requests.filter(r => r.status !== "pending_supervisor" && !(r.status === "rejected" && r.appeal_message && !r.appeal_reviewed));
 
   if (loading) {
     return (
@@ -178,6 +185,163 @@ const SupervisorLeaveApprovals = ({ supervisorId }: SupervisorLeaveApprovalsProp
 
   return (
     <div className="space-y-6">
+      {/* Appeal Requests */}
+      {appealRequests.length > 0 && (
+        <Card className="border-red-200 bg-red-50/50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-red-500" />
+              Leave Appeals ({appealRequests.length})
+            </CardTitle>
+            <CardDescription>Rejected requests with appeal messages from employees</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Employee</TableHead>
+                    <TableHead>Leave Type</TableHead>
+                    <TableHead>Date Range</TableHead>
+                    <TableHead>Original Reason</TableHead>
+                    <TableHead>Rejection Reason</TableHead>
+                    <TableHead>Appeal Message</TableHead>
+                    <TableHead>Document</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {appealRequests.map((request) => (
+                    <TableRow key={request.id}>
+                      <TableCell className="font-medium">
+                        {request.employee ? `${request.employee.firstName} ${request.employee.lastName}` : 'Unknown'}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{request.leave_type}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          {request.start_date && new Date(request.start_date).toLocaleDateString()}
+                          {' - '}
+                          {request.end_date && new Date(request.end_date).toLocaleDateString()}
+                        </div>
+                      </TableCell>
+                      <TableCell className="max-w-xs">
+                        <div className="text-sm truncate">{request.reason || "No reason provided"}</div>
+                      </TableCell>
+                      <TableCell className="max-w-xs">
+                        <div className="text-sm text-red-600 truncate">{request.rejection_reason || "No reason provided"}</div>
+                      </TableCell>
+                      <TableCell className="max-w-xs">
+                        <div className="text-sm font-medium text-blue-600 truncate">{request.appeal_message || "No message"}</div>
+                      </TableCell>
+                      <TableCell>
+                        {request.supporting_document_url ? (
+                          <a
+                            href={request.supporting_document_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-blue-600 hover:text-blue-800"
+                          >
+                            <FileText size={14} />
+                            <ExternalLink size={12} />
+                          </a>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="default"
+                            onClick={async () => {
+                              try {
+                                setProcessingId(request.id);
+                                // Reset to pending_supervisor status to reconsider
+                                const { error } = await updateDocument("leave_requests", request.id, {
+                                  status: "pending_supervisor",
+                                  appeal_reviewed: true,
+                                  appeal_reviewed_at: new Date(),
+                                  updated_at: new Date(),
+                                });
+                                
+                                if (error) throw error;
+                                
+                                toast({
+                                  title: "Appeal accepted",
+                                  description: "The leave request has been moved back to pending for reconsideration.",
+                                });
+                                
+                                fetchLeaveRequests();
+                              } catch (error: any) {
+                                console.error("Error accepting appeal:", error);
+                                toast({
+                                  title: "Error",
+                                  description: error.message || "An unknown error occurred",
+                                  variant: "destructive",
+                                });
+                              } finally {
+                                setProcessingId(null);
+                              }
+                            }}
+                            disabled={processingId === request.id}
+                          >
+                            <Check size={16} className="mr-1" />
+                            Reconsider
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={async () => {
+                              const additionalReason = prompt("Please provide additional reason for rejecting the appeal:");
+                              if (!additionalReason) return;
+                              
+                              try {
+                                setProcessingId(request.id);
+                                const { error } = await updateDocument("leave_requests", request.id, {
+                                  appeal_reviewed: true,
+                                  appeal_reviewed_at: new Date(),
+                                  appeal_rejection_reason: additionalReason,
+                                  updated_at: new Date(),
+                                });
+                                
+                                if (error) throw error;
+                                
+                                toast({
+                                  title: "Appeal rejected",
+                                  description: "The leave appeal has been permanently rejected.",
+                                  variant: "destructive",
+                                });
+                                
+                                fetchLeaveRequests();
+                              } catch (error: any) {
+                                console.error("Error rejecting appeal:", error);
+                                toast({
+                                  title: "Error",
+                                  description: error.message || "An unknown error occurred",
+                                  variant: "destructive",
+                                });
+                              } finally {
+                                setProcessingId(null);
+                              }
+                            }}
+                            disabled={processingId === request.id}
+                          >
+                            <X size={16} className="mr-1" />
+                            Reject Appeal
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Pending Requests */}
       {pendingRequests.length > 0 && (
         <Card>

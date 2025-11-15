@@ -1,13 +1,15 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Card, CardContent } from "@/components/ui/card";
 import { createDocument, getDocuments } from "@/lib/firebase/firestore";
 import { where } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, X } from "lucide-react";
+import { Upload, X, Calendar, AlertCircle, Info, TrendingDown } from "lucide-react";
 
 interface LeaveRequestFormProps {
   employeeId: string;
@@ -18,6 +20,8 @@ const LeaveRequestForm = ({ employeeId, onSuccess }: LeaveRequestFormProps) => {
   const [loading, setLoading] = useState(false);
   const [uploadingFile, setUploadingFile] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [leaveBalance, setLeaveBalance] = useState<any>(null);
+  const [leaveImpact, setLeaveImpact] = useState<any>(null);
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -26,6 +30,119 @@ const LeaveRequestForm = ({ employeeId, onSuccess }: LeaveRequestFormProps) => {
     leaveType: "",
     reason: "",
   });
+
+  useEffect(() => {
+    fetchLeaveBalance();
+  }, [employeeId]);
+
+  useEffect(() => {
+    calculateLeaveImpact();
+  }, [formData.startDate, formData.endDate, formData.leaveType, leaveBalance]);
+
+  const fetchLeaveBalance = async () => {
+    try {
+      const currentYear = new Date().getFullYear();
+      const { data: balanceData } = await getDocuments('leave_balances', [
+        where('employee_id', '==', employeeId),
+        where('year', '==', currentYear)
+      ]);
+
+      if (balanceData && balanceData.length > 0) {
+        setLeaveBalance(balanceData[0]);
+      }
+    } catch (error) {
+      console.error('Error fetching leave balance:', error);
+    }
+  };
+
+  const calculateLeaveDays = (startDate: string, endDate: string): number => {
+    if (!startDate || !endDate) return 0;
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const diffTime = Math.abs(end.getTime() - start.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+    return diffDays;
+  };
+
+  const calculateLeaveImpact = () => {
+    if (!formData.startDate || !formData.endDate || !formData.leaveType || !leaveBalance) {
+      setLeaveImpact(null);
+      return;
+    }
+
+    const totalDays = calculateLeaveDays(formData.startDate, formData.endDate);
+    const leaveType = formData.leaveType.toLowerCase();
+
+    let impact = {
+      totalDays,
+      deductedFrom: '',
+      paidDays: 0,
+      unpaidDays: 0,
+      remainingBalance: 0,
+      balanceAfter: 0,
+      willImpactSalary: false,
+      message: ''
+    };
+
+    if (leaveType.includes('casual')) {
+      const casualRemaining = leaveBalance.casual_leave_remaining || 0;
+      if (totalDays <= casualRemaining) {
+        impact.deductedFrom = 'Casual Leave';
+        impact.paidDays = totalDays;
+        impact.unpaidDays = 0;
+        impact.remainingBalance = casualRemaining;
+        impact.balanceAfter = casualRemaining - totalDays;
+        impact.willImpactSalary = false;
+        impact.message = `${totalDays} day(s) will be deducted from your Casual Leave balance. No salary deduction.`;
+      } else {
+        impact.deductedFrom = 'Casual Leave + Unpaid';
+        impact.paidDays = casualRemaining;
+        impact.unpaidDays = totalDays - casualRemaining;
+        impact.remainingBalance = casualRemaining;
+        impact.balanceAfter = 0;
+        impact.willImpactSalary = true;
+        impact.message = `${casualRemaining} day(s) from Casual Leave (paid) + ${impact.unpaidDays} day(s) as Unpaid Leave. ${impact.unpaidDays} day(s) will be deducted from salary.`;
+      }
+    } else if (leaveType.includes('sick')) {
+      const sickRemaining = leaveBalance.sick_leave_remaining || 0;
+      if (totalDays <= sickRemaining) {
+        impact.deductedFrom = 'Sick Leave';
+        impact.paidDays = totalDays;
+        impact.unpaidDays = 0;
+        impact.remainingBalance = sickRemaining;
+        impact.balanceAfter = sickRemaining - totalDays;
+        impact.willImpactSalary = false;
+        impact.message = `${totalDays} day(s) will be deducted from your Sick Leave balance. No salary deduction.`;
+      } else {
+        impact.deductedFrom = 'Sick Leave + Unpaid';
+        impact.paidDays = sickRemaining;
+        impact.unpaidDays = totalDays - sickRemaining;
+        impact.remainingBalance = sickRemaining;
+        impact.balanceAfter = 0;
+        impact.willImpactSalary = true;
+        impact.message = `${sickRemaining} day(s) from Sick Leave (paid) + ${impact.unpaidDays} day(s) as Unpaid Leave. ${impact.unpaidDays} day(s) will be deducted from salary.`;
+      }
+    } else if (leaveType.includes('unpaid')) {
+      impact.deductedFrom = 'Unpaid Leave';
+      impact.paidDays = 0;
+      impact.unpaidDays = totalDays;
+      impact.remainingBalance = 0;
+      impact.balanceAfter = 0;
+      impact.willImpactSalary = true;
+      impact.message = `All ${totalDays} day(s) will be marked as Unpaid Leave and deducted from your salary.`;
+    } else {
+      // Other leave types (Maternity, Paternity, Emergency, etc.) - typically don't deduct from balance
+      impact.deductedFrom = formData.leaveType;
+      impact.paidDays = totalDays;
+      impact.unpaidDays = 0;
+      impact.remainingBalance = 0;
+      impact.balanceAfter = 0;
+      impact.willImpactSalary = false;
+      impact.message = `${totalDays} day(s) of ${formData.leaveType}. Check with HR for salary impact.`;
+    }
+
+    setLeaveImpact(impact);
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -197,6 +314,75 @@ const LeaveRequestForm = ({ employeeId, onSuccess }: LeaveRequestFormProps) => {
           </SelectContent>
         </Select>
       </div>
+
+      {/* Leave Impact Calculation Display */}
+      {leaveImpact && (
+        <Card className="border-2">
+          <div className="p-4 space-y-3">
+            <div className="flex items-start gap-2">
+              <Info className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
+              <div className="flex-1 space-y-2">
+                <h4 className="font-semibold text-sm">Leave Balance Impact</h4>
+                
+                {/* Summary Row */}
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-gray-500" />
+                    <span className="text-gray-600">Total Days:</span>
+                    <span className="font-semibold">{leaveImpact.totalDays}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <TrendingDown className="h-4 w-4 text-gray-500" />
+                    <span className="text-gray-600">Deducted From:</span>
+                    <span className="font-semibold">{leaveImpact.leaveType}</span>
+                  </div>
+                </div>
+
+                {/* Balance Details */}
+                {leaveImpact.leaveType !== "Unpaid Leave" && (
+                  <div className="text-sm space-y-1 bg-gray-50 p-3 rounded">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Current Balance:</span>
+                      <span className="font-medium">{leaveImpact.currentBalance} days</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">After Approval:</span>
+                      <span className={`font-semibold ${leaveImpact.balanceAfter < 0 ? 'text-orange-600' : 'text-green-600'}`}>
+                        {leaveImpact.balanceAfter} days
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Impact Message */}
+                {leaveImpact.willImpactSalary ? (
+                  <Alert variant="destructive" className="py-3">
+                    <AlertCircle className="h-4 w-4" />
+                    <div className="ml-2">
+                      <div className="font-semibold text-sm">Salary Impact Warning</div>
+                      <div className="text-sm mt-1">{leaveImpact.message}</div>
+                      {leaveImpact.paidDays > 0 && leaveImpact.unpaidDays > 0 && (
+                        <div className="mt-2 text-xs space-y-1">
+                          <div>✓ Paid: {leaveImpact.paidDays} days</div>
+                          <div>✗ Unpaid: {leaveImpact.unpaidDays} days (salary will be deducted)</div>
+                        </div>
+                      )}
+                    </div>
+                  </Alert>
+                ) : (
+                  <Alert className="py-3 bg-green-50 border-green-200">
+                    <Info className="h-4 w-4 text-green-600" />
+                    <div className="ml-2">
+                      <div className="font-semibold text-sm text-green-800">No Salary Impact</div>
+                      <div className="text-sm text-green-700 mt-1">{leaveImpact.message}</div>
+                    </div>
+                  </Alert>
+                )}
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
 
       <div className="space-y-2">
         <Label htmlFor="reason">Reason</Label>

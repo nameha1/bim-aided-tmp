@@ -73,7 +73,7 @@ async function showDatabaseDetails() {
   });
   
   // Empty collections (ready for use)
-  const emptyCollections = ['attendance', 'leave_requests', 'assignments', 'assignment_members', 'payroll', 'payroll_settings', 'transactions', 'invoices', 'ip_whitelist'];
+  const emptyCollections = ['attendance', 'leave_requests', 'assignments', 'assignment_members', 'payroll', 'payroll_settings', 'transactions', 'ip_whitelist'];
   console.log('\n📂 READY FOR DATA (Empty Collections):');
   for (const collName of emptyCollections) {
     const coll = await db.collection(collName).get();

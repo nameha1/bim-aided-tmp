@@ -69,12 +69,21 @@ const EmployeeList = ({ onUpdate }: EmployeeListProps) => {
       if (data && data.length > 0) {
         const employeesWithRoles = await Promise.all(
           data.map(async (emp) => {
-            // Find the user document to get auth_uid
-            const { data: users } = await getDocuments("users", [
-              where("employee_id", "==", emp.id)
-            ]);
+            // The auth_uid should be stored directly in the employee document
+            let authUid = emp.auth_uid;
             
-            const authUid = users?.[0]?.auth_uid;
+            // If no auth_uid in employee doc, try to find it from users collection
+            // (for backwards compatibility with older employee records)
+            if (!authUid) {
+              const { data: users } = await getDocuments("users", [
+                where("employee_id", "==", emp.id)
+              ]);
+              
+              // The auth_uid is the document ID in the users collection
+              if (users && users.length > 0) {
+                authUid = users[0].id;
+              }
+            }
             
             // Fetch role using auth_uid
             let roles: string[] = [];
@@ -87,7 +96,8 @@ const EmployeeList = ({ onUpdate }: EmployeeListProps) => {
             
             return {
               ...emp,
-              user_id: authUid, // For compatibility
+              user_id: authUid, // For compatibility with components
+              auth_uid: authUid, // Keep this too
               roles
             };
           })
@@ -156,6 +166,10 @@ const EmployeeList = ({ onUpdate }: EmployeeListProps) => {
   const handleToggleAdminRole = async (employee: any) => {
     setActionLoading(true);
     try {
+      if (!employee.user_id) {
+        throw new Error('This employee does not have a user account yet. Please ensure they have login credentials first.');
+      }
+
       const isAdmin = employee.roles?.includes('admin');
       
       // Call API to toggle admin role
@@ -316,8 +330,9 @@ const EmployeeList = ({ onUpdate }: EmployeeListProps) => {
                       setSelectedEmployee(employee);
                       setResetPasswordDialogOpen(true);
                     }}
-                    disabled={actionLoading}
+                    disabled={actionLoading || !employee.user_id}
                     className="w-full"
+                    title={!employee.user_id ? "Employee needs login credentials first" : ""}
                   >
                     <Key className="h-4 w-4 mr-1" />
                     Reset
@@ -326,8 +341,9 @@ const EmployeeList = ({ onUpdate }: EmployeeListProps) => {
                     variant={isAdmin ? "outline" : "default"}
                     size="sm"
                     onClick={() => handleToggleAdminRole(employee)}
-                    disabled={actionLoading}
+                    disabled={actionLoading || !employee.user_id}
                     className="w-full"
+                    title={!employee.user_id ? "Employee needs login credentials first" : ""}
                   >
                     {isAdmin ? (
                       <>

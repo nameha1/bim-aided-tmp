@@ -84,6 +84,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Get the leave request details
+    const leaveRequestDoc = await adminDb.collection("leave_requests").doc(requestId).get();
+    if (!leaveRequestDoc.exists) {
+      return NextResponse.json(
+        { success: false, message: "Leave request not found" },
+        { status: 404 }
+      );
+    }
+
+    const leaveRequest = leaveRequestDoc.data();
+    const employeeId = leaveRequest?.employee_id;
+    const leaveType = leaveRequest?.leave_type;
+    const daysRequested = leaveRequest?.days_requested || 0;
+
     const updateData: any = {
       updated_at: new Date(),
     };
@@ -95,6 +109,85 @@ export async function POST(request: NextRequest) {
       updateData.approved_at = new Date();
       if (approved_by) {
         updateData.admin_approved_by = approved_by;
+      }
+
+      // Deduct leave balance when approved
+      if (employeeId && leaveType && daysRequested > 0) {
+        const employeeRef = adminDb.collection("employees").doc(employeeId);
+        const employeeDoc = await employeeRef.get();
+        
+        if (employeeDoc.exists) {
+          const employeeData = employeeDoc.data();
+          const balanceUpdate: any = {};
+          
+          // Calculate actual days to deduct based on leave type
+          let effectiveDays = daysRequested;
+          
+          // Handle fractional leaves
+          if (leaveType === "Hourly Leave") {
+            // Convert hours to fractional days (assuming 8 hours = 1 day)
+            effectiveDays = daysRequested / 8;
+            updateData.effective_days = effectiveDays; // Store for payroll
+          } else if (leaveType === "Half Day Leave") {
+            // Each half day = 0.5 days
+            effectiveDays = daysRequested * 0.5;
+            updateData.effective_days = effectiveDays;
+          }
+
+          // Deduct from appropriate balance
+          if (leaveType === "Casual Leave" || leaveType === "Hourly Leave" || leaveType === "Half Day Leave") {
+            // Fractional leaves deduct from casual leave balance
+            const currentBalance = employeeData?.casual_leave_remaining || 0;
+            const newBalance = Math.max(0, currentBalance - effectiveDays);
+            balanceUpdate.casual_leave_remaining = newBalance;
+            
+            // If exceeds balance, track unpaid days
+            if (effectiveDays > currentBalance) {
+              const unpaidDays = effectiveDays - currentBalance;
+              balanceUpdate.unpaid_leave_days = (employeeData?.unpaid_leave_days || 0) + unpaidDays;
+            }
+          } else if (leaveType === "Sick Leave") {
+            const currentBalance = employeeData?.sick_leave_remaining || 0;
+            const newBalance = Math.max(0, currentBalance - effectiveDays);
+            balanceUpdate.sick_leave_remaining = newBalance;
+            
+            // If exceeds balance, track unpaid days
+            if (effectiveDays > currentBalance) {
+              const unpaidDays = effectiveDays - currentBalance;
+              balanceUpdate.unpaid_leave_days = (employeeData?.unpaid_leave_days || 0) + unpaidDays;
+            }
+          } else if (leaveType === "Unpaid Leave" || leaveType === "Full Day Leave" || leaveType === "Other Leave") {
+            // These types directly impact salary
+            balanceUpdate.unpaid_leave_days = (employeeData?.unpaid_leave_days || 0) + effectiveDays;
+          } else if (leaveType === "Earned Leave" || leaveType === "Paid Leave" || leaveType === "Maternity Leave") {
+            // Paid leaves deduct from casual balance
+            const currentBalance = employeeData?.casual_leave_remaining || 0;
+            const newBalance = Math.max(0, currentBalance - effectiveDays);
+            balanceUpdate.casual_leave_remaining = newBalance;
+            
+            if (effectiveDays > currentBalance) {
+              const unpaidDays = effectiveDays - currentBalance;
+              balanceUpdate.unpaid_leave_days = (employeeData?.unpaid_leave_days || 0) + unpaidDays;
+            }
+          }
+
+          // Update employee balance
+          if (Object.keys(balanceUpdate).length > 0) {
+            await employeeRef.update(balanceUpdate);
+          }
+
+          // Also update leave_balances collection for the current year
+          const year = new Date().getFullYear();
+          const leaveBalanceQuery = await adminDb.collection("leave_balances")
+            .where("employee_id", "==", employeeId)
+            .where("year", "==", year)
+            .get();
+
+          if (!leaveBalanceQuery.empty) {
+            const leaveBalanceDoc = leaveBalanceQuery.docs[0];
+            await leaveBalanceDoc.ref.update(balanceUpdate);
+          }
+        }
       }
     } else if (action === 'reject') {
       updateData.status = 'rejected';

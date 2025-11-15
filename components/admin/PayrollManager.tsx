@@ -838,19 +838,51 @@ const PayrollManager = () => {
                                 <Info className="h-4 w-4" />
                               </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-72">
-                              <div className="space-y-2">
-                                <h4 className="font-semibold text-sm">Deduction Breakdown</h4>
+                            <PopoverContent className="w-80">
+                              <div className="space-y-3">
+                                <h4 className="font-semibold text-sm">Salary Calculation Details</h4>
+                                
+                                {/* Leave Breakdown Section */}
+                                {(payroll.casual_leave_taken > 0 || payroll.sick_leave_taken > 0 || payroll.unpaid_leave_days > 0) && (
+                                  <div className="bg-blue-50 p-2 rounded">
+                                    <h5 className="font-semibold text-xs text-blue-900 mb-1">Leave Taken This Month</h5>
+                                    <div className="space-y-1 text-xs">
+                                      {payroll.casual_leave_taken > 0 && (
+                                        <div className="flex justify-between">
+                                          <span className="text-blue-700">✓ Casual Leave:</span>
+                                          <span className="font-medium text-blue-900">{payroll.casual_leave_taken} day(s)</span>
+                                        </div>
+                                      )}
+                                      {payroll.sick_leave_taken > 0 && (
+                                        <div className="flex justify-between">
+                                          <span className="text-blue-700">✓ Sick Leave:</span>
+                                          <span className="font-medium text-blue-900">{payroll.sick_leave_taken} day(s)</span>
+                                        </div>
+                                      )}
+                                      {payroll.unpaid_leave_days > 0 && (
+                                        <div className="flex justify-between">
+                                          <span className="text-red-700">✗ Unpaid Leave:</span>
+                                          <span className="font-medium text-red-900">{payroll.unpaid_leave_days} day(s)</span>
+                                        </div>
+                                      )}
+                                      <div className="text-xs text-blue-600 mt-1 italic">
+                                        Casual & Sick leaves are paid (no salary impact)
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                                
                                 <div className="space-y-1 text-sm">
+                                  <h5 className="font-semibold text-xs mb-1">Deductions</h5>
                                   {payroll.late_penalty > 0 && (
                                     <div className="flex justify-between">
-                                      <span className="text-muted-foreground">Late Penalty:</span>
+                                      <span className="text-muted-foreground">Late Penalty ({payroll.late_penalty_days} day(s)):</span>
                                       <span className="text-red-600">-{formatCurrency(payroll.late_penalty)}</span>
                                     </div>
                                   )}
                                   {payroll.unpaid_leave_deduction > 0 && (
                                     <div className="flex justify-between">
-                                      <span className="text-muted-foreground">Unpaid Leave:</span>
+                                      <span className="text-muted-foreground">Unpaid Leave ({payroll.unpaid_leave_days} day(s)):</span>
                                       <span className="text-red-600">-{formatCurrency(payroll.unpaid_leave_deduction)}</span>
                                     </div>
                                   )}

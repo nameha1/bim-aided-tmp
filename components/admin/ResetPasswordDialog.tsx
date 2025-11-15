@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Key } from "lucide-react";
+import { Loader2, Key, Copy } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface ResetPasswordDialogProps {
@@ -30,6 +30,24 @@ const ResetPasswordDialog = ({ employeeId, employeeName, employeeEmail, open, on
     }
     setNewPassword(password);
     setConfirmPassword(password);
+  };
+
+  const copyPassword = async () => {
+    if (!newPassword) return;
+    
+    try {
+      await navigator.clipboard.writeText(newPassword);
+      toast({
+        title: "Password copied",
+        description: "Password has been copied to clipboard.",
+      });
+    } catch (error) {
+      toast({
+        title: "Failed to copy",
+        description: "Could not copy password to clipboard.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -58,7 +76,7 @@ const ResetPasswordDialog = ({ employeeId, employeeName, employeeEmail, open, on
     setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:3001/api/reset-employee-password', {
+      const response = await fetch('/api/reset-employee-password', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -77,7 +95,7 @@ const ResetPasswordDialog = ({ employeeId, employeeName, employeeEmail, open, on
 
       toast({
         title: "Password reset successfully",
-        description: "An email has been sent to the employee with the new credentials.",
+        description: `The password for ${employeeName} has been updated. Please inform them of their new password.`,
       });
 
       setNewPassword("");
@@ -115,7 +133,7 @@ const ResetPasswordDialog = ({ employeeId, employeeName, employeeEmail, open, on
 
         <Alert>
           <AlertDescription>
-            The employee will receive an email at <strong>{employeeEmail}</strong> with their new password.
+            You are resetting the password for <strong>{employeeEmail}</strong>. Please securely share the new password with them.
           </AlertDescription>
         </Alert>
 
@@ -140,6 +158,17 @@ const ResetPasswordDialog = ({ employeeId, employeeName, employeeEmail, open, on
               >
                 Generate
               </Button>
+              {newPassword && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={copyPassword}
+                  title="Copy password"
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              )}
             </div>
             <p className="text-xs text-muted-foreground">
               Minimum 6 characters. Click "Generate" for a secure password.

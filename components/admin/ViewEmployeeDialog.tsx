@@ -3,7 +3,8 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { User, Mail, Phone, MapPin, Calendar, Briefcase, Users, CreditCard, AlertCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { User, Mail, Phone, MapPin, Calendar, Briefcase, Users, CreditCard, AlertCircle, FileText, Download, ExternalLink } from "lucide-react";
 
 interface ViewEmployeeDialogProps {
   employee: any;
@@ -242,6 +243,67 @@ const ViewEmployeeDialog = ({ employee, open, onOpenChange }: ViewEmployeeDialog
               </div>
             </div>
           </div>
+
+          {/* Documents */}
+          {(employee.document_urls || employee.documentUrls) && 
+           (Array.isArray(employee.document_urls || employee.documentUrls) && 
+            (employee.document_urls || employee.documentUrls).length > 0) && (
+            <div>
+              <h4 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                <FileText className="h-5 w-5 text-primary" />
+                Documents
+              </h4>
+              <Separator className="mb-4" />
+              <div className="grid grid-cols-1 gap-3">
+                {(employee.document_urls || employee.documentUrls).map((url: string, index: number) => {
+                  const fileName = url.split('/').pop() || `Document ${index + 1}`;
+                  const fileExtension = fileName.split('.').pop()?.toLowerCase() || '';
+                  const isPDF = fileExtension === 'pdf';
+                  const isImage = ['jpg', 'jpeg', 'png', 'gif'].includes(fileExtension);
+                  
+                  return (
+                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <FileText className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{decodeURIComponent(fileName)}</p>
+                          <p className="text-xs text-muted-foreground capitalize">{fileExtension} file</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-2 ml-2">
+                        {(isPDF || isImage) && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => window.open(url, '_blank')}
+                            title="View in new tab"
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                          </Button>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = fileName;
+                            a.target = '_blank';
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                          }}
+                          title="Download"
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

@@ -4,7 +4,6 @@ import { orderBy } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { InvoiceManager } from "./InvoiceManager";
 import {
   Dialog,
   DialogContent,
@@ -434,17 +433,11 @@ export const TransactionManager = () => {
       <div>
         <h2 className="text-2xl font-bold text-gray-900">Transaction Management</h2>
         <p className="text-gray-500">
-          Track all income, expenses, and upcoming invoices in Bangladeshi Taka (BDT)
+          Track all income and expenses in Bangladeshi Taka (BDT)
         </p>
       </div>
 
-      <Tabs defaultValue="transactions" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="transactions">Transactions</TabsTrigger>
-          <TabsTrigger value="invoices">Upcoming Invoices</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="transactions" className="space-y-6">
+      <div className="space-y-6">
       <div className="flex justify-end gap-2">
         <Button onClick={exportToExcel} variant="outline" className="border-blue-600 text-cyan-500 hover:bg-blue-50">
           <Download className="h-4 w-4 mr-2" />
@@ -829,12 +822,7 @@ export const TransactionManager = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-        </TabsContent>
-
-        <TabsContent value="invoices">
-          <InvoiceManager onInvoiceConverted={fetchTransactions} />
-        </TabsContent>
-      </Tabs>
+      </div>
     </div>
   );
 };

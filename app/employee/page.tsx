@@ -135,10 +135,23 @@ export default function EmployeeDashboard() {
           setEmployeeData(employee);
           
           // Check if user is a supervisor
+          console.log("Checking supervisor status for employee ID:", employee.id);
           const { data: supervisedEmployees } = await getDocuments('employees', [
             where('supervisor_id', '==', employee.id)
           ]);
-          setIsSupervisor(supervisedEmployees && supervisedEmployees.length > 0);
+          console.log("Supervised employees found:", supervisedEmployees?.length || 0);
+          
+          // Also check if employee is in management/executive roles
+          const isManagementRole = employee.department?.toLowerCase().includes('management') || 
+                                   employee.department?.toLowerCase().includes('executive') ||
+                                   employee.designation?.toLowerCase().includes('manager');
+          
+          const hasSupervisedEmployees = supervisedEmployees && supervisedEmployees.length > 0;
+          console.log("Is management role:", isManagementRole);
+          console.log("Has supervised employees:", hasSupervisedEmployees);
+          
+          // Set supervisor status if they have team members OR are in management role
+          setIsSupervisor(hasSupervisedEmployees || isManagementRole);
           
           // Check if user is an assignment supervisor
           const { data: supervisedAssignments } = await getDocuments('assignments', [
@@ -368,14 +381,6 @@ export default function EmployeeDashboard() {
               <CheckCircle size={16} />
               Attendance Check-In
             </TabsTrigger>
-            <TabsTrigger value="team-overview" className="gap-2">
-              <Users size={16} />
-              My Team
-            </TabsTrigger>
-            <TabsTrigger value="supervised-assignments" className="gap-2">
-              <ClipboardList size={16} />
-              Supervised Assignments
-            </TabsTrigger>
             <TabsTrigger value="leave-request" className="gap-2">
               <FileText size={16} />
               Request Leave
@@ -384,6 +389,18 @@ export default function EmployeeDashboard() {
               <History size={16} />
               Attendance History
             </TabsTrigger>
+            {isSupervisor && (
+              <TabsTrigger value="team-overview" className="gap-2 bg-primary/10 border-primary/20">
+                <Users size={16} />
+                My Team & Leave Approvals
+              </TabsTrigger>
+            )}
+            {isAssignmentSupervisor && (
+              <TabsTrigger value="supervised-assignments" className="gap-2">
+                <ClipboardList size={16} />
+                Supervised Assignments
+              </TabsTrigger>
+            )}
             <TabsTrigger value="holiday-calendar" className="gap-2">
               <PartyPopper size={16} />
               Holiday Calendar

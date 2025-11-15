@@ -1,246 +1,97 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Download, Trash2, Plus, FileText, Search, Calendar } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
-
-interface InvoiceItem {
-  description: string;
-  quantity: number;
-  rate: number;
-  amount: number;
-}
-
-interface Invoice {
-  id: string;
-  invoiceNumber: string;
-  invoiceDate: string;
-  dueDate: string;
-  clientName: string;
-  clientAddress: string;
-  clientEmail: string;
-  clientPhone: string;
-  items: InvoiceItem[];
-  subtotal: number;
-  taxRate: number;
-  taxAmount: number;
-  total: number;
-  notes: string;
-  status: string;
-  createdAt: string;
-  createdBy: string;
-}
+import { Invoice } from "@/types/invoice";
+import { getDocuments, deleteDocument } from "@/lib/firebase/firestore";
+import { Search, Download, Eye, Edit, Trash2, FileText } from "lucide-react";
+import { downloadInvoicePDF, previewInvoicePDF } from "@/lib/pdf/invoice-generator";
+import { format } from "date-fns";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface InvoiceListProps {
-  onCreateNew: () => void;
+  onEdit?: (invoice: Invoice) => void;
+  refreshTrigger?: number;
 }
 
-export default function InvoiceList({ onCreateNew }: InvoiceListProps) {
+export default function InvoiceList({ onEdit, refreshTrigger }: InvoiceListProps) {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [filteredInvoices, setFilteredInvoices] = useState<Invoice[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [dateFilter, setDateFilter] = useState("");
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [invoiceToDelete, setInvoiceToDelete] = useState<Invoice | null>(null);
   const { toast } = useToast();
 
+  useEffect(() => {
+    fetchInvoices();
+  }, [refreshTrigger]);
+
+  useEffect(() => {
+    filterInvoices();
+  }, [searchTerm, invoices]);
+
   const fetchInvoices = async () => {
+    setIsLoading(true);
     try {
-      const response = await fetch("/api/invoices");
-      const data = await response.json();
-      
-      if (data.success) {
-        setInvoices(data.invoices);
-      } else {
-        toast({
-          title: "Error",
-          description: data.error || "Failed to fetch invoices",
-          variant: "destructive",
-        });
-      }
+      const { data } = await getDocuments<Invoice>("invoices");
+      const sorted = (data || []).sort((a, b) => {
+        return new Date(b.invoiceDate).getTime() - new Date(a.invoiceDate).getTime();
+      });
+      setInvoices(sorted);
+      setFilteredInvoices(sorted);
     } catch (error) {
       console.error("Error fetching invoices:", error);
       toast({
         title: "Error",
-        description: "Failed to fetch invoices",
+        description: "Failed to load invoices",
         variant: "destructive",
       });
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchInvoices();
-  }, []);
-
-  const generatePDF = async (invoice: Invoice) => {
-    try {
-      const doc = new jsPDF();
-      
-      // Add company logo
-      const logoUrl = "/Logo-BIMaided.png";
-      const img = new Image();
-      img.src = logoUrl;
-      
-      await new Promise((resolve, reject) => {
-        img.onload = resolve;
-        img.onerror = reject;
-      });
-      
-      doc.addImage(img, "PNG", 15, 10, 40, 15);
-
-      // Company details
-      doc.setFontSize(10);
-      doc.setTextColor(100);
-      doc.text("BIM AIDED", 15, 32);
-      doc.text("Architectural Consultancy Services", 15, 37);
-      
-      // Invoice title
-      doc.setFontSize(24);
-      doc.setTextColor(0);
-      doc.text("INVOICE", 150, 20);
-      
-      // Invoice details
-      doc.setFontSize(10);
-      doc.setTextColor(100);
-      doc.text(`Invoice #: ${invoice.invoiceNumber}`, 150, 30);
-      doc.text(`Date: ${new Date(invoice.invoiceDate).toLocaleDateString()}`, 150, 36);
-      doc.text(`Due Date: ${new Date(invoice.dueDate).toLocaleDateString()}`, 150, 42);
-
-      // Client information
-      doc.setFontSize(12);
-      doc.setTextColor(0);
-      doc.text("Bill To:", 15, 55);
-      doc.setFontSize(10);
-      doc.setTextColor(100);
-      doc.text(invoice.clientName, 15, 62);
-      if (invoice.clientAddress) doc.text(invoice.clientAddress, 15, 68);
-      if (invoice.clientEmail) doc.text(invoice.clientEmail, 15, 74);
-      if (invoice.clientPhone) doc.text(invoice.clientPhone, 15, 80);
-
-      // Items table
-      autoTable(doc, {
-        startY: 95,
-        head: [["Description", "Qty", "Rate", "Amount"]],
-        body: (invoice.items || []).map((item) => [
-          item.description || "",
-          (item.quantity || 0).toString(),
-          `৳${(item.rate || 0).toFixed(2)}`,
-          `৳${(item.amount || 0).toFixed(2)}`,
-        ]),
-        theme: "grid",
-        headStyles: {
-          fillColor: [41, 128, 185],
-          textColor: 255,
-          fontStyle: "bold",
-        },
-        styles: {
-          fontSize: 10,
-          cellPadding: 5,
-        },
-        columnStyles: {
-          0: { cellWidth: 90 },
-          1: { cellWidth: 25, halign: "center" },
-          2: { cellWidth: 35, halign: "right" },
-          3: { cellWidth: 35, halign: "right" },
-        },
-      });
-
-      // Calculate final Y position after table
-      const finalY = (doc as any).lastAutoTable.finalY + 10;
-
-      // Summary section
-      const summaryX = 140;
-      doc.setFontSize(10);
-      
-      doc.setTextColor(100);
-      doc.text("Subtotal:", summaryX, finalY);
-      doc.text(`৳${(invoice.subtotal || 0).toFixed(2)}`, 185, finalY, { align: "right" });
-      
-      doc.text(`Tax (${invoice.taxRate || 0}%):`, summaryX, finalY + 7);
-      doc.text(`৳${(invoice.taxAmount || 0).toFixed(2)}`, 185, finalY + 7, { align: "right" });
-      
-      doc.setFontSize(12);
-      doc.setTextColor(0);
-      doc.setFont(undefined, "bold");
-      doc.text("Total:", summaryX, finalY + 15);
-      doc.text(`৳${(invoice.total || 0).toFixed(2)}`, 185, finalY + 15, { align: "right" });
-
-      // Notes
-      if (invoice.notes) {
-        doc.setFont(undefined, "normal");
-        doc.setFontSize(10);
-        doc.setTextColor(100);
-        doc.text("Notes:", 15, finalY + 25);
-        doc.text(invoice.notes, 15, finalY + 32, { maxWidth: 180 });
-      }
-
-      // Footer
-      const pageHeight = doc.internal.pageSize.height;
-      doc.setFontSize(8);
-      doc.setTextColor(150);
-      doc.text(
-        "Thank you for your business!",
-        105,
-        pageHeight - 20,
-        { align: "center" }
-      );
-
-      // Save the PDF
-      doc.save(`Invoice_${invoice.invoiceNumber}.pdf`);
-      
-      toast({
-        title: "Success",
-        description: "Invoice PDF downloaded successfully",
-      });
-    } catch (error) {
-      console.error("Error generating PDF:", error);
-      toast({
-        title: "Error",
-        description: "Failed to generate PDF",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const deleteInvoice = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this invoice?")) {
+  const filterInvoices = () => {
+    if (!searchTerm.trim()) {
+      setFilteredInvoices(invoices);
       return;
     }
 
+    const search = searchTerm.toLowerCase();
+    const filtered = invoices.filter(invoice => 
+      invoice.invoiceNumber.toLowerCase().includes(search) ||
+      invoice.billedTo.name.toLowerCase().includes(search) ||
+      invoice.billedTo.email?.toLowerCase().includes(search) ||
+      invoice.status.toLowerCase().includes(search)
+    );
+    setFilteredInvoices(filtered);
+  };
+
+  const handleDelete = async () => {
+    if (!invoiceToDelete?.id) return;
+
     try {
-      const response = await fetch(`/api/invoices?id=${id}`, {
-        method: "DELETE",
+      await deleteDocument("invoices", invoiceToDelete.id);
+      toast({
+        title: "Success",
+        description: "Invoice deleted successfully",
       });
-      
-      const data = await response.json();
-      
-      if (data.success) {
-        toast({
-          title: "Success",
-          description: "Invoice deleted successfully",
-        });
-        fetchInvoices();
-      } else {
-        toast({
-          title: "Error",
-          description: data.error || "Failed to delete invoice",
-          variant: "destructive",
-        });
-      }
+      await fetchInvoices();
     } catch (error) {
       console.error("Error deleting invoice:", error);
       toast({
@@ -248,119 +99,72 @@ export default function InvoiceList({ onCreateNew }: InvoiceListProps) {
         description: "Failed to delete invoice",
         variant: "destructive",
       });
+    } finally {
+      setDeleteDialogOpen(false);
+      setInvoiceToDelete(null);
     }
   };
 
   const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case "paid":
-        return "bg-green-500";
-      case "sent":
-        return "bg-blue-500";
-      case "draft":
-        return "bg-gray-500";
-      default:
-        return "bg-gray-500";
-    }
+    const colors: Record<string, string> = {
+      draft: "bg-gray-500",
+      sent: "bg-blue-500",
+      paid: "bg-green-500",
+      overdue: "bg-red-500",
+      cancelled: "bg-gray-400",
+    };
+    return colors[status] || "bg-gray-500";
   };
 
-  // Filter invoices based on search term and date
-  const filteredInvoices = useMemo(() => {
-    return invoices.filter((invoice) => {
-      // Search filter (client name or invoice number)
-      const matchesSearch = searchTerm === "" || 
-        invoice.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        invoice.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase());
+  const formatCurrency = (amount: number, currency: 'USD' | 'BDT'): string => {
+    const symbol = currency === 'USD' ? '$' : '৳';
+    return `${symbol}${amount.toFixed(2)}`;
+  };
 
-      // Date filter (invoice date)
-      const matchesDate = dateFilter === "" || 
-        invoice.invoiceDate.startsWith(dateFilter);
-
-      return matchesSearch && matchesDate;
-    });
-  }, [invoices, searchTerm, dateFilter]);
-
-  if (loading) {
-    return (
-      <Card>
-        <CardContent className="pt-6">
-          <div className="text-center py-8">Loading invoices...</div>
-        </CardContent>
-      </Card>
-    );
+  if (isLoading) {
+    return <div className="text-center py-8">Loading invoices...</div>;
   }
 
   return (
-    <Card>
-      <CardHeader className="border-b">
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="text-cyan-500" size={24} />
-              Saved Invoices
-            </CardTitle>
-            <CardDescription>
-              View and download all saved invoices
-            </CardDescription>
-          </div>
-          <Button onClick={onCreateNew} className="bg-cyan-500 hover:bg-cyan-600">
-            <Plus className="mr-2" size={18} />
-            Create New Invoice
-          </Button>
+    <div className="space-y-4">
+      {/* Search */}
+      <div className="flex gap-4 items-center">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+          <Input
+            placeholder="Search by invoice number, client name, or status..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
         </div>
-      </CardHeader>
-      <CardContent className="pt-6">
-        {invoices.length === 0 ? (
-          <div className="text-center py-12">
-            <FileText className="mx-auto text-gray-400 mb-4" size={48} />
-            <p className="text-gray-500 mb-4">No invoices found</p>
-            <Button onClick={onCreateNew} className="bg-cyan-500 hover:bg-cyan-600">
-              <Plus className="mr-2" size={18} />
-              Create Your First Invoice
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {/* Search and Filter Section */}
-            <div className="flex flex-col sm:flex-row gap-3">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-                <Input
-                  placeholder="Search by client name or invoice number..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              <div className="relative sm:w-64">
-                <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-                <Input
-                  type="date"
-                  placeholder="Filter by date..."
-                  value={dateFilter}
-                  onChange={(e) => setDateFilter(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              {(searchTerm || dateFilter) && (
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setSearchTerm("");
-                    setDateFilter("");
-                  }}
-                >
-                  Clear Filters
-                </Button>
+        <div className="text-sm text-muted-foreground">
+          {filteredInvoices.length} invoice{filteredInvoices.length !== 1 ? 's' : ''}
+        </div>
+      </div>
+
+      {filteredInvoices.length === 0 ? (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center py-8">
+              <FileText className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+              {searchTerm ? (
+                <>
+                  <p className="text-muted-foreground mb-2">No invoices found</p>
+                  <p className="text-sm text-muted-foreground">Try adjusting your search</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-muted-foreground mb-2">No invoices yet</p>
+                  <p className="text-sm text-muted-foreground">Create your first invoice to get started</p>
+                </>
               )}
             </div>
-
-            {/* Results count */}
-            <div className="text-sm text-gray-500">
-              Showing {filteredInvoices.length} of {invoices.length} invoice{invoices.length !== 1 ? 's' : ''}
-            </div>
-
-            {/* Table */}
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardContent className="p-0">
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -374,61 +178,109 @@ export default function InvoiceList({ onCreateNew }: InvoiceListProps) {
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
-              <TableBody>
-                {filteredInvoices.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-gray-500">
-                      No invoices match your search criteria
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredInvoices.map((invoice) => (
-                  <TableRow key={invoice.id}>
-                    <TableCell className="font-medium">
-                      {invoice.invoiceNumber}
-                    </TableCell>
-                    <TableCell>{invoice.clientName}</TableCell>
-                    <TableCell>
-                      {new Date(invoice.invoiceDate).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell>
-                      {new Date(invoice.dueDate).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell>৳{(invoice.total || 0).toFixed(2)}</TableCell>
-                    <TableCell>
-                      <Badge className={getStatusColor(invoice.status)}>
-                        {invoice.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => generatePDF(invoice)}
-                          title="Download PDF"
-                        >
-                          <Download size={16} />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => deleteInvoice(invoice.id)}
-                          title="Delete"
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                        >
-                          <Trash2 size={16} />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                )))}
-              </TableBody>
-            </Table>
-          </div>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+                <TableBody>
+                  {filteredInvoices.map((invoice) => (
+                    <TableRow key={invoice.id}>
+                      <TableCell className="font-medium">
+                        {invoice.invoiceNumber}
+                      </TableCell>
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">{invoice.billedTo.name}</div>
+                          {invoice.billedTo.email && (
+                            <div className="text-sm text-muted-foreground">
+                              {invoice.billedTo.email}
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {format(new Date(invoice.invoiceDate), 'MMM dd, yyyy')}
+                      </TableCell>
+                      <TableCell>
+                        {invoice.dueDate 
+                          ? format(new Date(invoice.dueDate), 'MMM dd, yyyy')
+                          : '-'
+                        }
+                      </TableCell>
+                      <TableCell className="font-semibold">
+                        {formatCurrency(invoice.total, invoice.currency)}
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={getStatusColor(invoice.status)}>
+                          {invoice.status.replace('_', ' ').toUpperCase()}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={async () => await previewInvoicePDF(invoice)}
+                            title="Preview PDF"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={async () => await downloadInvoicePDF(invoice)}
+                            title="Download PDF"
+                          >
+                            <Download className="h-4 w-4" />
+                          </Button>
+                          {onEdit && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => onEdit(invoice)}
+                              title="Edit Invoice"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              setInvoiceToDelete(invoice);
+                              setDeleteDialogOpen(true);
+                            }}
+                            title="Delete Invoice"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Invoice</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete invoice {invoiceToDelete?.invoiceNumber}?
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setInvoiceToDelete(null)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-red-500 hover:bg-red-600">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
   );
 }

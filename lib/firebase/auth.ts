@@ -104,7 +104,22 @@ export async function refreshSession() {
   }
 
   try {
-    await getIdToken(user, true);
+    // Force token refresh
+    const newToken = await getIdToken(user, true);
+    
+    // Update the server-side cookie with the new token
+    const response = await fetch('/api/auth/session', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ idToken: newToken }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to update session cookie');
+    }
+    
     return { error: null };
   } catch (error) {
     return { error };

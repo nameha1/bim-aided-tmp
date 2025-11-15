@@ -3,7 +3,12 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Check, X, FileText, ExternalLink } from "lucide-react";
+import { Check, X, FileText, ExternalLink, Info, AlertCircle } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 interface LeaveRequestsProps {
   onUpdate: () => void;
@@ -39,6 +44,73 @@ const LeaveRequests = ({ onUpdate }: LeaveRequestsProps) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const getLeaveTypeCategory = (leaveType: string) => {
+    const paidLeaves = ['Sick Leave', 'Casual Leave', 'Earned Leave', 'Paid Leave', 'Maternity Leave'];
+    const fractionalLeaves = ['Hourly Leave', 'Half Day Leave'];
+    const unpaidLeaves = ['Unpaid Leave', 'Full Day Leave', 'Other Leave'];
+
+    if (paidLeaves.includes(leaveType)) {
+      return { category: 'Paid', color: 'bg-green-100 text-green-800', icon: '✓' };
+    } else if (fractionalLeaves.includes(leaveType)) {
+      return { category: 'Fractional', color: 'bg-blue-100 text-blue-800', icon: '½' };
+    } else if (unpaidLeaves.includes(leaveType)) {
+      return { category: 'Unpaid', color: 'bg-red-100 text-red-800', icon: '✗' };
+    }
+    return { category: 'Other', color: 'bg-gray-100 text-gray-800', icon: '?' };
+  };
+
+  const calculateLeaveDays = (request: any) => {
+    if (!request.start_date || !request.end_date) return 'N/A';
+    
+    const days = request.days_requested || 0;
+    const leaveType = request.leave_type;
+
+    if (leaveType === 'Hourly Leave') {
+      return `${days} hour(s)`;
+    } else if (leaveType === 'Half Day Leave') {
+      return `${days * 0.5} day(s)`;
+    }
+    return `${days} day(s)`;
+  };
+
+  const getSalaryImpactInfo = (request: any) => {
+    const leaveType = request.leave_type;
+    const days = request.days_requested || 0;
+    
+    if (['Sick Leave', 'Casual Leave', 'Earned Leave', 'Paid Leave', 'Maternity Leave'].includes(leaveType)) {
+      return {
+        impact: 'No salary impact (within balance)',
+        severity: 'low',
+        note: `Deducted from ${leaveType.toLowerCase()} balance. Will impact salary only if balance is exceeded.`
+      };
+    } else if (leaveType === 'Hourly Leave') {
+      const fractionalDays = days / 8; // Assuming 8 hours = 1 day
+      return {
+        impact: `${fractionalDays.toFixed(2)} day(s) from casual leave`,
+        severity: 'medium',
+        note: 'Hourly leaves are converted to fractional days and deducted from casual leave balance.'
+      };
+    } else if (leaveType === 'Half Day Leave') {
+      const fractionalDays = days * 0.5;
+      return {
+        impact: `${fractionalDays} day(s) from casual leave`,
+        severity: 'medium',
+        note: 'Half-day leaves count as 0.5 days each, deducted from casual leave balance.'
+      };
+    } else if (['Unpaid Leave', 'Full Day Leave', 'Other Leave'].includes(leaveType)) {
+      return {
+        impact: `${days} day(s) salary deduction`,
+        severity: 'high',
+        note: 'This leave type directly impacts salary at the daily rate.'
+      };
+    }
+    return {
+      impact: 'Unknown',
+      severity: 'medium',
+      note: 'Impact calculation not available for this leave type.'
+    };
   };
 
     const handleApprove = async (id: string) => {
@@ -123,23 +195,65 @@ const LeaveRequests = ({ onUpdate }: LeaveRequestsProps) => {
           <TableRow>
             <TableHead>Employee</TableHead>
             <TableHead>Leave Type</TableHead>
+            <TableHead>Duration</TableHead>
             <TableHead>Date Range</TableHead>
+            <TableHead>Salary Impact</TableHead>
             <TableHead>Reason</TableHead>
             <TableHead>Document</TableHead>
-            <TableHead>Supervisor Status</TableHead>
-            <TableHead>Admin Status</TableHead>
+            <TableHead>Supervisor</TableHead>
+            <TableHead>Admin</TableHead>
             <TableHead>Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {requests.map((request) => (
-            <TableRow key={request.id}>
+          {requests.map((request) => {
+            const typeInfo = getLeaveTypeCategory(request.leave_type);
+            const salaryImpact = getSalaryImpactInfo(request);
+            
+            return (
+              <TableRow key={request.id}>
               <TableCell className="font-medium">
                 {request.employee ? `${request.employee.firstName} ${request.employee.lastName}` : 'Unknown'}
               </TableCell>
-              <TableCell>{request.leave_type}</TableCell>
+              <TableCell>
+                <div className="flex flex-col gap-1">
+                  <span className="font-medium">{request.leave_type}</span>
+                  <Badge className={`${typeInfo.color} w-fit text-xs`}>
+                    {typeInfo.icon} {typeInfo.category}
+                  </Badge>
+                </div>
+              </TableCell>
+              <TableCell className="font-medium">
+                {calculateLeaveDays(request)}
+              </TableCell>
               <TableCell>
                 {request.start_date && new Date(request.start_date).toLocaleDateString()} - {request.end_date && new Date(request.end_date).toLocaleDateString()}
+              </TableCell>
+              <TableCell>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-8 p-2">
+                      <div className="flex items-center gap-1">
+                        {salaryImpact.severity === 'high' && <AlertCircle className="h-4 w-4 text-red-500" />}
+                        {salaryImpact.severity === 'medium' && <Info className="h-4 w-4 text-blue-500" />}
+                        {salaryImpact.severity === 'low' && <Check className="h-4 w-4 text-green-500" />}
+                        <span className="text-xs">{salaryImpact.impact}</span>
+                      </div>
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-80">
+                    <div className="space-y-2">
+                      <h4 className="font-semibold">Salary Impact Details</h4>
+                      <p className="text-sm text-muted-foreground">{salaryImpact.note}</p>
+                      {request.appeal_message && (
+                        <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded">
+                          <p className="text-xs font-semibold text-yellow-800">⚠️ Has Appeal</p>
+                          <p className="text-xs text-yellow-700 mt-1">{request.appeal_message}</p>
+                        </div>
+                      )}
+                    </div>
+                  </PopoverContent>
+                </Popover>
               </TableCell>
               <TableCell>{request.reason || "N/A"}</TableCell>
               <TableCell>
@@ -206,8 +320,9 @@ const LeaveRequests = ({ onUpdate }: LeaveRequestsProps) => {
                   <span className="text-sm text-muted-foreground">✗ Rejected{request.rejection_reason ? `: ${request.rejection_reason}` : ''}</span>
                 )}
               </TableCell>
-            </TableRow>
-          ))}
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
     </div>

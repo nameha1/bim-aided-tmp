@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { getDocuments } from "@/lib/firebase/firestore";
 import { where } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Upload, X } from "lucide-react";
+import { Loader2, Upload, X, FileText, Download, ExternalLink } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface Employee {
@@ -39,6 +39,8 @@ interface Employee {
   emergency_person_address: string | null;
   profileImageUrl?: string | null;
   profile_picture?: string | null;
+  document_urls?: string[] | null;
+  documentUrls?: string[] | null;
 }
 
 interface EditEmployeeDialogProps {
@@ -56,6 +58,8 @@ const EditEmployeeDialog = ({ employee, open, onOpenChange, onSuccess }: EditEmp
   const [profileImage, setProfileImage] = useState<File | null>(null);
   const [profileImagePreview, setProfileImagePreview] = useState<string>("");
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [existingDocuments, setExistingDocuments] = useState<string[]>([]);
+  const [newDocuments, setNewDocuments] = useState<File[]>([]);
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -121,6 +125,8 @@ const EditEmployeeDialog = ({ employee, open, onOpenChange, onSuccess }: EditEmp
       });
       setProfileImagePreview(employee.profileImageUrl || employee.profile_picture || "");
       setProfileImage(null);
+      setExistingDocuments(employee.document_urls || employee.documentUrls || []);
+      setNewDocuments([]);
     }
   }, [employee]);
 
@@ -142,39 +148,83 @@ const EditEmployeeDialog = ({ employee, open, onOpenChange, onSuccess }: EditEmp
   };
 
   const fetchDepartments = async () => {
-    const { data, error } = await getDocuments("departments");
-    if (error) throw error;
-    if (!data) {
-      setDepartments([]);
-      return;
-    }
-    // De-duplicate departments by name - cast to any[] to work with reduce
-    const dataArray = data as any[];
-    const uniqueDepts = dataArray.reduce((acc: any[], dept: any) => {
-      if (!acc.some(d => d.name === dept.name)) {
-        acc.push(dept);
+    try {
+      // Default departments (matching AddEmployeeForm)
+      const DEFAULT_DEPARTMENTS = [
+        "Executive & Management Level",
+        "Technical & Production Divisions",
+        "Support & Innovation Divisions",
+        "Business & Administrative Division"
+      ];
+
+      // Load custom departments from Firestore (matching AddEmployeeForm)
+      const { data: customDepts, error } = await getDocuments("custom_departments");
+      if (error) throw error;
+
+      const allDepts: any[] = [];
+      
+      // Add default departments as objects with name property
+      DEFAULT_DEPARTMENTS.forEach(deptName => {
+        allDepts.push({ id: `default-${deptName}`, name: deptName });
+      });
+
+      // Add custom departments
+      if (customDepts && customDepts.length > 0) {
+        customDepts.forEach((dept: any) => {
+          // Only add if not already in defaults
+          if (!DEFAULT_DEPARTMENTS.includes(dept.name)) {
+            allDepts.push(dept);
+          }
+        });
       }
-      return acc;
-    }, [] as any[]);
-    setDepartments(uniqueDepts);
+
+      setDepartments(allDepts);
+    } catch (error) {
+      console.error("Error fetching departments:", error);
+      setDepartments([]);
+    }
   };
 
   const fetchDesignations = async () => {
-    const { data, error } = await getDocuments("designations");
-    if (error) throw error;
-    if (!data) {
-      setDesignations([]);
-      return;
-    }
-    // De-duplicate designations by title - cast to any[] to work with reduce
-    const dataArray = data as any[];
-    const uniqueDesigs = dataArray.reduce((acc: any[], desig: any) => {
-      if (!acc.some(d => d.title === desig.title)) {
-        acc.push(desig);
+    try {
+      // Default designations (matching AddEmployeeForm)
+      const DEFAULT_DESIGNATIONS = [
+        "BIM Modeler",
+        "Sr. BIM Modeler",
+        "BIM Engineer",
+        "Sr. BIM Engineer",
+        "BIM Coordinator",
+        "Sr. BIM Coordinator",
+        "BIM Manager",
+        "Admin"
+      ];
+
+      // Load custom designations from Firestore (matching AddEmployeeForm)
+      const { data: customDesigs, error } = await getDocuments("custom_designations");
+      if (error) throw error;
+
+      const allDesigs: any[] = [];
+      
+      // Add default designations as objects with name/title property
+      DEFAULT_DESIGNATIONS.forEach(desigName => {
+        allDesigs.push({ id: `default-${desigName}`, name: desigName, title: desigName });
+      });
+
+      // Add custom designations
+      if (customDesigs && customDesigs.length > 0) {
+        customDesigs.forEach((desig: any) => {
+          // Only add if not already in defaults
+          if (!DEFAULT_DESIGNATIONS.includes(desig.name)) {
+            allDesigs.push({ ...desig, title: desig.name });
+          }
+        });
       }
-      return acc;
-    }, [] as any[]);
-    setDesignations(uniqueDesigs);
+
+      setDesignations(allDesigs);
+    } catch (error) {
+      console.error("Error fetching designations:", error);
+      setDesignations([]);
+    }
   };
 
   const fetchEmployees = async () => {
@@ -300,6 +350,59 @@ const EditEmployeeDialog = ({ employee, open, onOpenChange, onSuccess }: EditEmp
     setProfileImagePreview("");
   };
 
+  const handleDocumentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const validFiles: File[] = [];
+
+    for (const file of files) {
+      if (file.size > 2 * 1024 * 1024) {
+        toast({
+          title: "File too large",
+          description: `${file.name} exceeds 2MB limit`,
+          variant: "destructive",
+        });
+        continue;
+      }
+      validFiles.push(file);
+    }
+
+    const totalDocs = existingDocuments.length + newDocuments.length + validFiles.length;
+    if (totalDocs > 3) {
+      toast({
+        title: "Too many documents",
+        description: "Maximum 3 documents allowed",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setNewDocuments([...newDocuments, ...validFiles]);
+  };
+
+  const removeNewDocument = (index: number) => {
+    setNewDocuments(newDocuments.filter((_, i) => i !== index));
+  };
+
+  const removeExistingDocument = (index: number) => {
+    setExistingDocuments(existingDocuments.filter((_, i) => i !== index));
+  };
+
+  const uploadFile = async (file: File, path: string): Promise<string> => {
+    const formDataUpload = new FormData();
+    formDataUpload.append('file', file);
+    formDataUpload.append('path', path);
+
+    const response = await fetch('/api/upload-image', {
+      method: 'POST',
+      body: formDataUpload,
+    });
+
+    if (!response.ok) throw new Error('File upload failed');
+    
+    const result = await response.json();
+    return result.url;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -330,6 +433,13 @@ const EditEmployeeDialog = ({ employee, open, onOpenChange, onSuccess }: EditEmp
 
         profileImageUrl = uploadResult.url || uploadResult.data?.url;
         setUploadingImage(false);
+      }
+
+      // Upload new documents
+      const allDocumentUrls = [...existingDocuments];
+      for (let i = 0; i < newDocuments.length; i++) {
+        const url = await uploadFile(newDocuments[i], `employees/documents/${employee.id}-${Date.now()}-${i}`);
+        allDocumentUrls.push(url);
       }
 
       const response = await fetch(`/api/update-employee/${employee.id}`, {
@@ -363,6 +473,7 @@ const EditEmployeeDialog = ({ employee, open, onOpenChange, onSuccess }: EditEmp
           emergencyPersonContact: formData.emergencyPersonContact || null,
           emergencyPersonAddress: formData.emergencyPersonAddress || null,
           profileImageUrl: profileImageUrl || null,
+          documentUrls: allDocumentUrls,
         }),
       });
 
@@ -578,8 +689,8 @@ const EditEmployeeDialog = ({ employee, open, onOpenChange, onSuccess }: EditEmp
                 </SelectTrigger>
                 <SelectContent className="z-[100] max-h-[300px]">
                   {designations.map((desig, index) => (
-                    <SelectItem key={desig.id || `desig-${index}-${desig.title}`} value={desig.title}>
-                      {desig.title}
+                    <SelectItem key={desig.id || `desig-${index}-${desig.name}`} value={desig.name}>
+                      {desig.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -713,6 +824,114 @@ const EditEmployeeDialog = ({ employee, open, onOpenChange, onSuccess }: EditEmp
                 value={formData.emergencyPersonAddress}
                 onChange={(e) => setFormData({ ...formData, emergencyPersonAddress: e.target.value })}
               />
+            </div>
+
+            {/* Document Upload Section */}
+            <div className="space-y-4 md:col-span-2 pt-4 border-t">
+              <h3 className="text-lg font-semibold">Documents (max 3, each max 2MB)</h3>
+              
+              {/* Existing Documents */}
+              {existingDocuments.length > 0 && (
+                <div className="space-y-2">
+                  <Label>Current Documents</Label>
+                  {existingDocuments.map((url, index) => {
+                    const fileName = url.split('/').pop() || `Document ${index + 1}`;
+                    const fileExtension = fileName.split('.').pop()?.toLowerCase() || '';
+                    const isPDF = fileExtension === 'pdf';
+                    const isImage = ['jpg', 'jpeg', 'png', 'gif'].includes(fileExtension);
+                    
+                    return (
+                      <div key={index} className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-800 rounded border">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                          <span className="text-sm truncate">{decodeURIComponent(fileName)}</span>
+                        </div>
+                        <div className="flex gap-1 ml-2">
+                          {(isPDF || isImage) && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => window.open(url, '_blank')}
+                              title="View"
+                            >
+                              <ExternalLink className="h-4 w-4" />
+                            </Button>
+                          )}
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              const a = document.createElement('a');
+                              a.href = url;
+                              a.download = fileName;
+                              a.target = '_blank';
+                              document.body.appendChild(a);
+                              a.click();
+                              document.body.removeChild(a);
+                            }}
+                            title="Download"
+                          >
+                            <Download className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeExistingDocument(index)}
+                            title="Remove"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* New Documents */}
+              {newDocuments.length > 0 && (
+                <div className="space-y-2">
+                  <Label>New Documents (to be uploaded)</Label>
+                  {newDocuments.map((doc, index) => (
+                    <div key={index} className="flex items-center justify-between p-2 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800">
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                        <span className="text-sm truncate">{doc.name}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {(doc.size / (1024 * 1024)).toFixed(2)}MB
+                        </span>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeNewDocument(index)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Upload New Documents */}
+              {(existingDocuments.length + newDocuments.length) < 3 && (
+                <div>
+                  <Label htmlFor="edit-documents">Add New Documents</Label>
+                  <Input
+                    id="edit-documents"
+                    type="file"
+                    multiple
+                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                    onChange={handleDocumentChange}
+                    disabled={(existingDocuments.length + newDocuments.length) >= 3}
+                    className="mt-2"
+                  />
+                </div>
+              )}
             </div>
           </div>
 
