@@ -27,7 +27,7 @@ const WhatsAppWidget = () => {
   const [showFAQ, setShowFAQ] = useState(true);
 
   // Replace with your actual WhatsApp number (including country code, no + or spaces)
-  const whatsappNumber = "8801318466061"; // Update this with your WhatsApp number
+  const whatsappNumber = "8801308230988"; // Updated WhatsApp number
 
   // Quick Reply Buttons
   const quickReplies = [

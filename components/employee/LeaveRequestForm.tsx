@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent } from "@/components/ui/card";
-import { createDocument, getDocuments } from "@/lib/firebase/firestore";
+import { createDocument, getDocuments, getDocument } from "@/lib/firebase/firestore";
 import { where } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { Upload, X, Calendar, AlertCircle, Info, TrendingDown } from "lucide-react";
@@ -165,12 +165,9 @@ const LeaveRequestForm = ({ employeeId, onSuccess }: LeaveRequestFormProps) => {
     setLoading(true);
 
     try {
-      // Get employee details for folder name
-      const { data: employeeData } = await getDocuments("employees", [
-        where("id", "==", employeeId)
-      ]);
+      // Get employee details for folder name and supervisor_id
+      const { data: employee } = await getDocument("employees", employeeId);
 
-      const employee = employeeData?.[0];
       const employeeName = employee ? `${employee.firstName} ${employee.lastName}` : 'Unknown';
       
       let fileUrl = null;
@@ -208,6 +205,9 @@ const LeaveRequestForm = ({ employeeId, onSuccess }: LeaveRequestFormProps) => {
       // Get employee's supervisor_id
       const supervisor_id = employee?.supervisor_id || null;
 
+      // Calculate total days requested
+      const days_requested = calculateLeaveDays(formData.startDate, formData.endDate);
+
       // Create leave request in Firestore
       const { error } = await createDocument("leave_requests", {
         employee_id: employeeId,
@@ -216,6 +216,7 @@ const LeaveRequestForm = ({ employeeId, onSuccess }: LeaveRequestFormProps) => {
         end_date: formData.endDate,
         leave_type: formData.leaveType,
         reason: formData.reason,
+        days_requested: days_requested,
         status: supervisor_id ? "pending_supervisor" : "pending_admin",
         supervisor_approved: false,
         admin_approved: false,
@@ -334,16 +335,16 @@ const LeaveRequestForm = ({ employeeId, onSuccess }: LeaveRequestFormProps) => {
                   <div className="flex items-center gap-2">
                     <TrendingDown className="h-4 w-4 text-gray-500" />
                     <span className="text-gray-600">Deducted From:</span>
-                    <span className="font-semibold">{leaveImpact.leaveType}</span>
+                    <span className="font-semibold">{leaveImpact.deductedFrom}</span>
                   </div>
                 </div>
 
                 {/* Balance Details */}
-                {leaveImpact.leaveType !== "Unpaid Leave" && (
+                {leaveImpact.deductedFrom !== "Unpaid Leave" && leaveImpact.remainingBalance > 0 && (
                   <div className="text-sm space-y-1 bg-gray-50 p-3 rounded">
                     <div className="flex justify-between">
                       <span className="text-gray-600">Current Balance:</span>
-                      <span className="font-medium">{leaveImpact.currentBalance} days</span>
+                      <span className="font-medium">{leaveImpact.remainingBalance} days</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">After Approval:</span>

@@ -174,9 +174,9 @@ export async function generateInvoicePDF(invoice: Invoice): Promise<TDocumentDef
     },
     layout: {
       fillColor: (rowIndex: number) => (rowIndex % 2 === 1 ? '#f7f9fc' : null),
-      hLineWidth: (i: number, node: any) => (i === 0 || i === node.table.body.length) ? 2 : 0.5,
+      hLineWidth: (i: number, node: any) => (i === 0 || i === node.table.body.length) ? 0.5 : 0.3,
       vLineWidth: () => 0,
-      hLineColor: (i: number, node: any) => (i === 0 || i === node.table.body.length) ? '#0ea5e9' : '#e5e7eb',
+      hLineColor: () => '#e5e7eb',
       vLineColor: () => '#e0e0e0',
       paddingLeft: (i: number) => 12,
       paddingRight: (i: number) => 12,
@@ -187,9 +187,9 @@ export async function generateInvoicePDF(invoice: Invoice): Promise<TDocumentDef
   });
 
   // Summary section - aligned with table (QTY + RATE + AMOUNT = 50 + 80 + 80 = 210)
-  const summaryWidth = 210;
-  const labelWidth = 130;
-  const valueWidth = 80;
+  const summaryWidth = 230;
+  const labelWidth = 140;
+  const valueWidth = 90;
   
   const summaryContent: any = {
     columns: [
@@ -232,16 +232,16 @@ export async function generateInvoicePDF(invoice: Invoice): Promise<TDocumentDef
                 type: 'line',
                 x1: 0, y1: 0,
                 x2: summaryWidth, y2: 0,
-                lineWidth: 1.5,
-                lineColor: '#0ea5e9'
+                lineWidth: 0.5,
+                lineColor: '#d1d5db'
               }
             ],
             margin: [0, 0, 0, 8] as [number, number, number, number]
           },
           {
             columns: [
-              { text: 'TOTAL:', style: 'totalLabel', width: labelWidth, bold: true },
-              { text: formatCurrency(invoice.total, invoice.currency), style: 'totalValue', alignment: 'right' as const, width: valueWidth, bold: true }
+              { text: 'TOTAL:', style: 'totalLabel', width: labelWidth },
+              { text: formatCurrency(invoice.total, invoice.currency), style: 'totalValue', alignment: 'right' as const, width: valueWidth }
             ]
           }
         ]
@@ -271,6 +271,36 @@ export async function generateInvoicePDF(invoice: Invoice): Promise<TDocumentDef
         { text: invoice.terms, style: 'notes' }
       ],
       margin: [0, 0, 0, 10] as [number, number, number, number]
+    });
+  }
+
+  // Signature section - positioned above bank details
+  if (invoice.fromProfile?.signatureName || invoice.fromProfile?.signatureImage) {
+    content.push({
+      columns: [
+        {
+          width: '*',
+          text: ''
+        },
+        {
+          width: 210,
+          stack: [
+            ...(invoice.fromProfile.signatureImage ? [{
+              image: invoice.fromProfile.signatureImage,
+              width: 60,
+              height: 25,
+              alignment: 'right' as const,
+              margin: [0, 0, 0, 8] as [number, number, number, number]
+            }] : []),
+            ...(invoice.fromProfile.signatureName ? [{ 
+              text: invoice.fromProfile.signatureName, 
+              style: 'signatureName',
+              alignment: 'right' as const
+            }] : [])
+          ]
+        }
+      ],
+      margin: [0, 30, 0, 15] as [number, number, number, number]
     });
   }
 
@@ -382,7 +412,7 @@ export async function generateInvoicePDF(invoice: Invoice): Promise<TDocumentDef
         bold: true
       },
       totalValue: {
-        fontSize: 13,
+        fontSize: 12,
         bold: true,
         color: '#0ea5e9'
       },
@@ -395,6 +425,11 @@ export async function generateInvoicePDF(invoice: Invoice): Promise<TDocumentDef
         fontSize: 9,
         margin: [0, 1, 0, 0] as [number, number, number, number],
         lineHeight: 1.2
+      },
+      signatureName: {
+        fontSize: 10,
+        bold: true,
+        margin: [0, 0, 0, 0] as [number, number, number, number]
       },
       footer: {
         fontSize: 9,

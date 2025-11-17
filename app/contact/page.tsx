@@ -1,8 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Navigation from "@/components/Navigation";
-import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,6 +8,16 @@ import { Card } from "@/components/ui/card";
 import { Mail, Phone, MapPin, Clock, Send } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
+import dynamic from "next/dynamic";
+
+// Lazy load heavy components
+const Navigation = dynamic(() => import("@/components/Navigation"), {
+  loading: () => <div className="h-20 bg-background border-b" />,
+});
+
+const Footer = dynamic(() => import("@/components/Footer"), {
+  loading: () => <div className="h-96 bg-muted" />,
+});
 
 export default function Contact() {
   const { toast } = useToast();
@@ -200,20 +208,34 @@ export default function Contact() {
       <Navigation />
       
       {/* Hero Section */}
-      <section className="relative pt-32 pb-20 bg-gradient-to-br from-primary/10 via-background to-secondary/20 overflow-hidden">
-        {/* Background Pattern */}
-        <div className="absolute inset-0 opacity-5">
+      <section className="relative pt-32 pb-20 overflow-hidden">
+        {/* Background Image with Overlay */}
+        <div className="absolute inset-0">
+          <img 
+            src="/images/contact-hero.jpg" 
+            alt="Contact Us Background"
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              const target = e.currentTarget as HTMLImageElement;
+              target.style.display = 'none';
+            }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-br from-sky-900/90 via-blue-800/85 to-primary/80" />
+        </div>
+        
+        {/* Enhanced Background Pattern */}
+        <div className="absolute inset-0 opacity-10">
           <div className="absolute inset-0" style={{
             backgroundImage: `
-              linear-gradient(to right, currentColor 1px, transparent 1px),
-              linear-gradient(to bottom, currentColor 1px, transparent 1px)
+              linear-gradient(to right, white 1px, transparent 1px),
+              linear-gradient(to bottom, white 1px, transparent 1px)
             `,
             backgroundSize: '40px 40px'
           }} />
           <div className="absolute inset-0" style={{
             backgroundImage: `
-              radial-gradient(circle at 20% 50%, currentColor 1px, transparent 1px),
-              radial-gradient(circle at 80% 50%, currentColor 1px, transparent 1px)
+              radial-gradient(circle at 20% 50%, white 2px, transparent 2px),
+              radial-gradient(circle at 80% 50%, white 2px, transparent 2px)
             `,
             backgroundSize: '60px 60px'
           }} />
@@ -221,8 +243,8 @@ export default function Contact() {
         
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-3xl mx-auto text-center">
-            <h1 className="text-5xl font-bold mb-6">Contact Us</h1>
-            <p className="text-xl text-muted-foreground">
+            <h1 className="text-5xl font-bold mb-6 text-white">Contact Us</h1>
+            <p className="text-xl text-white/90">
               Get in touch with our team. We're here to help with your BIM needs.
             </p>
           </div>
@@ -238,12 +260,20 @@ export default function Contact() {
                 <Mail className="text-primary" size={24} />
               </div>
               <h3 className="font-semibold mb-2">Email Us</h3>
-              <a 
-                href="mailto:design.bimaided@gmail.com" 
-                className="text-sm text-muted-foreground hover:text-primary transition-colors"
-              >
-                design.bimaided@gmail.com
-              </a>
+              <div className="text-sm text-muted-foreground space-y-1">
+                <a 
+                  href="mailto:info@bimaided.com" 
+                  className="block hover:text-primary transition-colors"
+                >
+                  info@bimaided.com
+                </a>
+                <a 
+                  href="mailto:info.bimaided@gmail.com" 
+                  className="block hover:text-primary transition-colors"
+                >
+                  info.bimaided@gmail.com
+                </a>
+              </div>
             </Card>
 
             <Card className="p-6 text-center hover:shadow-lg transition-shadow">
@@ -264,8 +294,9 @@ export default function Contact() {
               </div>
               <h3 className="font-semibold mb-2">Visit Us</h3>
               <p className="text-sm text-muted-foreground">
-                ECB, Dhaka Cantonment<br />
-                Dhaka-1206, Bangladesh
+                House 7, Level 1, Road 1/B,<br />
+                Nikunjo-2, Dhaka-1229,<br />
+                Bangladesh
               </p>
             </Card>
 

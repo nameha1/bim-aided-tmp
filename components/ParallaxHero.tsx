@@ -106,11 +106,15 @@ const ParallaxHero = () => {
           }}
         >
           {/* Main Title */}
-          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold mb-4 md:mb-6 leading-tight px-2">
-            <span className="block typing-text drop-shadow-[0_4px_20px_rgba(0,0,0,0.8)]">
-              Building the Future
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold mb-4 md:mb-6 px-8 sm:px-12 md:px-16 font-[var(--font-roboto)]" style={{ letterSpacing: '0', lineHeight: '1.4' }}>
+            <span className="block mb-3 md:mb-4">
+              <span className="typing-wrapper">
+                <span className="typing-text drop-shadow-[0_4px_20px_rgba(0,0,0,0.8)]">
+                  Building the Future
+                </span>
+              </span>
             </span>
-            <span className="block mt-1 md:mt-2 bg-gradient-to-r from-white via-blue-100 to-white/90 bg-clip-text text-transparent animate-fade-in [animation-delay:2.5s] [animation-fill-mode:forwards] drop-shadow-[0_4px_20px_rgba(0,0,0,0.8)]">
+            <span className="block text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl bg-gradient-to-r from-white via-blue-100 to-white/90 bg-clip-text text-transparent animate-fade-in [animation-delay:2.5s] [animation-fill-mode:forwards] drop-shadow-[0_4px_20px_rgba(0,0,0,0.8)]" style={{ lineHeight: '1.4' }}>
               with BIM Excellence
             </span>
           </h1>

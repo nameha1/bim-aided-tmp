@@ -17,7 +17,6 @@ interface TeamOverviewProps {
 const TeamOverview = ({ managerId }: TeamOverviewProps) => {
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
   const [teamAttendance, setTeamAttendance] = useState<any[]>([]);
-  const [teamAssignments, setTeamAssignments] = useState<any[]>([]);
   const [pendingAppealsCount, setPendingAppealsCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -74,15 +73,6 @@ const TeamOverview = ({ managerId }: TeamOverviewProps) => {
         );
 
         setTeamAttendance(teamAttendanceData);
-
-        // Fetch assignments for team members
-        const { data: assignments } = await getDocuments("assignment_members");
-        
-        const teamAssignmentsData = (assignments || []).filter((assign: any) =>
-          memberIds.includes(assign.employee_id)
-        );
-
-        setTeamAssignments(teamAssignmentsData);
       }
     } catch (error: any) {
       console.error("Error fetching team data:", error);
@@ -168,17 +158,6 @@ const TeamOverview = ({ managerId }: TeamOverviewProps) => {
             <p className="text-xs text-muted-foreground">Checked in</p>
           </CardContent>
         </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Assignments</CardTitle>
-            <Briefcase className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{teamAssignments.length}</div>
-            <p className="text-xs text-muted-foreground">Total assignments</p>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Team Data Tabs */}
@@ -186,7 +165,6 @@ const TeamOverview = ({ managerId }: TeamOverviewProps) => {
         <TabsList>
           <TabsTrigger value="attendance">Today's Attendance</TabsTrigger>
           <TabsTrigger value="members">Team Members</TabsTrigger>
-          <TabsTrigger value="assignments">Assignments</TabsTrigger>
           <TabsTrigger value="leave-approvals" className="gap-2">
             Leave Approvals
             {pendingAppealsCount > 0 && (
@@ -294,49 +272,6 @@ const TeamOverview = ({ managerId }: TeamOverviewProps) => {
                   ))}
                 </TableBody>
               </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="assignments">
-          <Card className="border-border">
-            <CardHeader>
-              <CardTitle>Team Assignments</CardTitle>
-              <CardDescription>
-                Active assignments for team members
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {teamAssignments.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  No active assignments found
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Employee</TableHead>
-                      <TableHead>Assignment</TableHead>
-                      <TableHead>Role</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {teamAssignments.map((assignment) => (
-                      <TableRow key={assignment.id}>
-                        <TableCell className="font-medium">
-                          {getEmployeeName(assignment.employee_id)}
-                        </TableCell>
-                        <TableCell>{assignment.assignment_name || "—"}</TableCell>
-                        <TableCell>{assignment.role || "—"}</TableCell>
-                        <TableCell>
-                          <Badge variant="default">{assignment.status || "Active"}</Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
             </CardContent>
           </Card>
         </TabsContent>

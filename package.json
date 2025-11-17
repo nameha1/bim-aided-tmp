@@ -8,6 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "analyze": "bash scripts/analyze-bundle.sh",
     "test-firebase": "node scripts/test-firebase-connection.cjs",
     "test-minio": "node scripts/test-minio-connection.cjs",
     "test-r2": "node scripts/setup-r2.cjs",

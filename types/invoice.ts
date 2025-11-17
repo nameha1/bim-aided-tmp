@@ -20,6 +20,8 @@ export interface CompanyProfile {
   website?: string;
   taxId?: string;
   logo?: string;
+  signatureName?: string;
+  signatureImage?: string;
   isDefault?: boolean;
   createdAt?: any;
   updatedAt?: any;

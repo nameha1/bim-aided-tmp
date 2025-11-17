@@ -14,7 +14,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import * as XLSX from 'xlsx';
 import {
   Select,
   SelectContent,
@@ -42,16 +41,16 @@ interface Transaction {
   transaction_type: "income" | "expense";
   amount: number;
   currency: string;
-  assignment_id: string | null;
-  assignment_title?: string;
+  client_work_id: string | null;
+  project_title?: string;
   category: string;
   notes: string | null;
   created_at: string;
 }
 
-interface Assignment {
+interface ClientWork {
   id: string;
-  title: string;
+  project_name: string;
 }
 
 const EXPENSE_CATEGORIES = [
@@ -75,7 +74,7 @@ const INCOME_CATEGORIES = [
 
 export const TransactionManager = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [clientWorks, setClientWorks] = useState<ClientWork[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -86,7 +85,7 @@ export const TransactionManager = () => {
   const [transactionDate, setTransactionDate] = useState("");
   const [transactionType, setTransactionType] = useState<"income" | "expense">("expense");
   const [amount, setAmount] = useState("");
-  const [assignmentId, setAssignmentId] = useState("");
+  const [clientWorkId, setClientWorkId] = useState("");
   const [category, setCategory] = useState("");
   const [notes, setNotes] = useState("");
 
@@ -99,7 +98,7 @@ export const TransactionManager = () => {
 
   useEffect(() => {
     fetchTransactions();
-    fetchAssignments();
+    fetchClientWorks();
   }, []);
 
   const fetchTransactions = async () => {
@@ -115,22 +114,22 @@ export const TransactionManager = () => {
         return;
       }
 
-      // Enrich with assignment titles
-      const transactionsWithAssignments = await Promise.all(
+      // Enrich with client work/project titles
+      const transactionsWithProjects = await Promise.all(
         (data || []).map(async (transaction: any) => {
-          let assignment_title = null;
-          if (transaction.assignment_id) {
-            const { data: assignment } = await getDocument("assignments", transaction.assignment_id);
-            assignment_title = assignment?.title || null;
+          let project_title = null;
+          if (transaction.client_work_id) {
+            const { data: clientWork } = await getDocument("client_works", transaction.client_work_id);
+            project_title = clientWork?.project_name || null;
           }
           return {
             ...transaction,
-            assignment_title
+            project_title
           };
         })
       );
 
-      setTransactions(transactionsWithAssignments);
+      setTransactions(transactionsWithProjects);
     } catch (error: any) {
       console.log("Transactions feature not yet available:", error);
       setTransactions([]);
@@ -139,19 +138,19 @@ export const TransactionManager = () => {
     }
   };
 
-  const fetchAssignments = async () => {
+  const fetchClientWorks = async () => {
     try {
-      const { data, error } = await getDocuments("assignments");
+      const { data, error } = await getDocuments("client_works");
 
       if (!error && data) {
-        // Sort by title in JavaScript
-        const sortedAssignments = data.sort((a: any, b: any) => 
-          (a.title || '').localeCompare(b.title || '')
+        // Sort by project name
+        const sortedWorks = data.sort((a: any, b: any) => 
+          (a.project_name || '').localeCompare(b.project_name || '')
         );
-        setAssignments(sortedAssignments.map((a: any) => ({ id: a.id, title: a.title })));
+        setClientWorks(sortedWorks.map((w: any) => ({ id: w.id, project_name: w.project_name })));
       }
     } catch (error) {
-      console.log("Could not fetch assignments:", error);
+      console.log("Could not fetch client works:", error);
     }
   };
 
@@ -161,7 +160,7 @@ export const TransactionManager = () => {
     setTransactionDate(today);
     setTransactionType("expense");
     setAmount("");
-    setAssignmentId("");
+    setClientWorkId("");
     setCategory("");
     setNotes("");
     setEditingTransaction(null);
@@ -177,7 +176,7 @@ export const TransactionManager = () => {
     setTransactionDate(transaction.transaction_date);
     setTransactionType(transaction.transaction_type);
     setAmount(transaction.amount.toString());
-    setAssignmentId(transaction.assignment_id || "");
+    setClientWorkId(transaction.client_work_id || "");
     setCategory(transaction.category);
     setNotes(transaction.notes || "");
     setDialogOpen(true);
@@ -218,7 +217,7 @@ export const TransactionManager = () => {
         transaction_type: transactionType,
         amount: parseFloat(amount),
         currency: "BDT",
-        assignment_id: assignmentId && assignmentId !== "none" ? assignmentId : null,
+        client_work_id: clientWorkId && clientWorkId !== "none" ? clientWorkId : null,
         category,
         notes: notes || null,
       };
@@ -352,7 +351,7 @@ export const TransactionManager = () => {
     return getTotalIncome() - getTotalExpense();
   };
 
-  const exportToExcel = () => {
+  const exportToExcel = async () => {
     // Prepare data for Excel
     const excelData = filteredTransactions.map((transaction) => ({
       Date: formatDate(transaction.transaction_date),
@@ -360,7 +359,7 @@ export const TransactionManager = () => {
       Amount: Number(transaction.amount),
       Currency: transaction.currency,
       Category: transaction.category,
-      Assignment: transaction.assignment_title || "N/A",
+      Project: transaction.project_title || "N/A",
       Notes: transaction.notes || "",
     }));
 
@@ -372,7 +371,7 @@ export const TransactionManager = () => {
       Amount: "",
       Currency: "",
       Category: "",
-      Assignment: "",
+      Project: "",
       Notes: "",
     } as any);
     excelData.push({
@@ -403,6 +402,9 @@ export const TransactionManager = () => {
       Notes: "",
     } as any);
 
+    // Dynamically import XLSX only when needed
+    const XLSX = await import('xlsx');
+    
     // Create worksheet
     const worksheet = XLSX.utils.json_to_sheet(excelData);
 
@@ -649,9 +651,9 @@ export const TransactionManager = () => {
                             <Calendar className="h-4 w-4 mr-2" />
                             {formatDate(transaction.transaction_date)}
                           </div>
-                          {transaction.assignment_title && (
+                          {transaction.project_title && (
                             <div className="text-muted-foreground">
-                              Assignment: {transaction.assignment_title}
+                              Project: {transaction.project_title}
                             </div>
                           )}
                           <div className={`font-bold text-lg ${
@@ -769,16 +771,16 @@ export const TransactionManager = () => {
             </div>
 
             <div>
-              <Label htmlFor="assignment">Assignment (Optional)</Label>
-              <Select value={assignmentId || undefined} onValueChange={(value) => setAssignmentId(value)}>
+              <Label htmlFor="clientWork">Client Project (Optional)</Label>
+              <Select value={clientWorkId || undefined} onValueChange={(value) => setClientWorkId(value)}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select assignment (optional)" />
+                  <SelectValue placeholder="Select client project (optional)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">No Assignment</SelectItem>
-                  {assignments.map((assignment) => (
-                    <SelectItem key={assignment.id} value={assignment.id}>
-                      {assignment.title}
+                  <SelectItem value="none">No Project</SelectItem>
+                  {clientWorks.map((work) => (
+                    <SelectItem key={work.id} value={work.id}>
+                      {work.project_name}
                     </SelectItem>
                   ))}
                 </SelectContent>

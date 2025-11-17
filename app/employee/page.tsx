@@ -1,29 +1,36 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
-import { User, Calendar, FileText, LogOut, Briefcase, Users, ClipboardList, CheckCircle, History, PartyPopper, ListTodo } from "lucide-react";
-import EmployeeProfile from "@/components/employee/EmployeeProfile";
-import LeaveRequestForm from "@/components/employee/LeaveRequestForm";
-import LeaveBalanceDisplay from "@/components/employee/LeaveBalanceDisplay";
-import AttendanceHistory from "@/components/employee/AttendanceHistory";
-import SupervisorLeaveApprovals from "@/components/employee/SupervisorLeaveApprovals";
-import MyAssignments from "@/components/employee/MyAssignments";
-import SupervisorAssignmentTeams from "@/components/employee/SupervisorAssignmentTeams";
-import HolidayCalendar from "@/components/employee/HolidayCalendar";
-import AttendanceCheckIn from "@/components/employee/AttendanceCheckIn";
-import TeamOverview from "@/components/employee/TeamOverview";
+import { User, Calendar, FileText, LogOut, Briefcase, Users, ClipboardList, CheckCircle, History, PartyPopper } from "lucide-react";
+
+// Lazy load heavy components for better performance
+const EmployeeProfile = lazy(() => import("@/components/employee/EmployeeProfile"));
+const LeaveRequestForm = lazy(() => import("@/components/employee/LeaveRequestForm"));
+const LeaveBalanceDisplay = lazy(() => import("@/components/employee/LeaveBalanceDisplay"));
+const AttendanceHistory = lazy(() => import("@/components/employee/AttendanceHistory"));
+const SupervisorLeaveApprovals = lazy(() => import("@/components/employee/SupervisorLeaveApprovals"));
+const HolidayCalendar = lazy(() => import("@/components/employee/HolidayCalendar"));
+const AttendanceCheckIn = lazy(() => import("@/components/employee/AttendanceCheckIn"));
+const TeamOverview = lazy(() => import("@/components/employee/TeamOverview"));
+
+// Loading component for Suspense fallbacks
+const ComponentLoader = () => (
+  <div className="flex items-center justify-center py-8">
+    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+  </div>
+);
 
 export default function EmployeeDashboard() {
   const [employeeData, setEmployeeData] = useState<any>(null);
   const [leaveBalance, setLeaveBalance] = useState<any>(null);
   const [isSupervisor, setIsSupervisor] = useState(false);
-  const [isAssignmentSupervisor, setIsAssignmentSupervisor] = useState(false);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const { toast } = useToast();
@@ -159,12 +166,6 @@ export default function EmployeeDashboard() {
           
           // Set supervisor status if they have team members OR are in management role
           setIsSupervisor(hasSupervisedEmployees || isManagementRole);
-          
-          // Check if user is an assignment supervisor
-          const { data: supervisedAssignments } = await getDocuments('assignments', [
-            where('supervisor_id', '==', employee.id)
-          ]);
-          setIsAssignmentSupervisor(supervisedAssignments && supervisedAssignments.length > 0);
         }
         
         if (isMounted) {
@@ -287,11 +288,14 @@ export default function EmployeeDashboard() {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <img 
+        <div className="container mx-auto px-4 py-6 flex items-center justify-between">
+          <Image 
             src="/Logo-BIMaided.png" 
             alt="BIM aided Logo" 
-            className="h-12 md:h-14 w-auto object-contain"
+            width={224}
+            height={64}
+            className="h-14 md:h-16 w-auto object-contain"
+            priority
           />
           <Button variant="outline" onClick={handleLogout}>
             <LogOut size={16} className="mr-2" />
@@ -308,14 +312,14 @@ export default function EmployeeDashboard() {
               {/* Profile Picture */}
               <div className="flex-shrink-0">
                 {employeeData.profileImageUrl ? (
-                  <div className="relative">
-                    <div className="w-24 h-24 rounded-full bg-background p-1">
-                      <img 
-                        src={employeeData.profileImageUrl} 
-                        alt={`${employeeData.firstName || employeeData.first_name} ${employeeData.lastName || employeeData.last_name}`}
-                        className="w-full h-full rounded-full object-cover"
-                      />
-                    </div>
+                  <div className="relative w-24 h-24 rounded-full bg-background p-1">
+                    <Image 
+                      src={employeeData.profileImageUrl} 
+                      alt={`${employeeData.firstName || employeeData.first_name} ${employeeData.lastName || employeeData.last_name}`}
+                      fill
+                      className="rounded-full object-cover"
+                      sizes="96px"
+                    />
                   </div>
                 ) : (
                   <div className="w-24 h-24 rounded-full bg-background p-1">
@@ -395,12 +399,8 @@ export default function EmployeeDashboard() {
         )}
 
         {/* Main Content Tabs */}
-        <Tabs defaultValue="assignments" className="space-y-4">
+        <Tabs defaultValue="check-in" className="space-y-4">
           <TabsList className="flex-wrap h-auto">
-            <TabsTrigger value="assignments" className="gap-2">
-              <ListTodo size={16} />
-              My Assignments
-            </TabsTrigger>
             <TabsTrigger value="check-in" className="gap-2">
               <CheckCircle size={16} />
               Attendance Check-In
@@ -417,12 +417,6 @@ export default function EmployeeDashboard() {
               <TabsTrigger value="team-overview" className="gap-2 bg-primary/10 border-primary/20">
                 <Users size={16} />
                 My Team & Leave Approvals
-              </TabsTrigger>
-            )}
-            {isAssignmentSupervisor && (
-              <TabsTrigger value="supervised-assignments" className="gap-2">
-                <ClipboardList size={16} />
-                Supervised Assignments
               </TabsTrigger>
             )}
             <TabsTrigger value="holiday-calendar" className="gap-2">
@@ -442,25 +436,23 @@ export default function EmployeeDashboard() {
                 <CardDescription>View and manage your personal information</CardDescription>
               </CardHeader>
               <CardContent>
-                <EmployeeProfile employee={employeeData} />
+                <Suspense fallback={<ComponentLoader />}>
+                  <EmployeeProfile employee={employeeData} />
+                </Suspense>
               </CardContent>
             </Card>
           </TabsContent>
 
           <TabsContent value="check-in">
-            <AttendanceCheckIn employeeId={employeeData.id} />
+            <Suspense fallback={<ComponentLoader />}>
+              <AttendanceCheckIn employeeId={employeeData.id} />
+            </Suspense>
           </TabsContent>
 
           <TabsContent value="team-overview">
-            <TeamOverview managerId={employeeData.id} />
-          </TabsContent>
-
-          <TabsContent value="assignments">
-            <MyAssignments />
-          </TabsContent>
-
-          <TabsContent value="supervised-assignments">
-            <SupervisorAssignmentTeams />
+            <Suspense fallback={<ComponentLoader />}>
+              <TeamOverview managerId={employeeData.id} />
+            </Suspense>
           </TabsContent>
 
           <TabsContent value="leave-request">
@@ -471,14 +463,18 @@ export default function EmployeeDashboard() {
                   <CardDescription>Submit a new leave request</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <LeaveRequestForm 
-                    employeeId={employeeData.id} 
-                    onSuccess={fetchEmployeeData}
-                  />
+                  <Suspense fallback={<ComponentLoader />}>
+                    <LeaveRequestForm 
+                      employeeId={employeeData.id} 
+                      onSuccess={fetchEmployeeData}
+                    />
+                  </Suspense>
                 </CardContent>
               </Card>
               
-              <LeaveBalanceDisplay employeeId={employeeData.id} />
+              <Suspense fallback={<ComponentLoader />}>
+                <LeaveBalanceDisplay employeeId={employeeData.id} />
+              </Suspense>
             </div>
           </TabsContent>
 
@@ -489,7 +485,9 @@ export default function EmployeeDashboard() {
                 <CardDescription>View your attendance and leave records</CardDescription>
               </CardHeader>
               <CardContent>
-                <AttendanceHistory employeeId={employeeData.id} />
+                <Suspense fallback={<ComponentLoader />}>
+                  <AttendanceHistory employeeId={employeeData.id} />
+                </Suspense>
               </CardContent>
             </Card>
           </TabsContent>
@@ -501,7 +499,9 @@ export default function EmployeeDashboard() {
                 <CardDescription>View company and public holidays for 2025-2026</CardDescription>
               </CardHeader>
               <CardContent>
-                <HolidayCalendar />
+                <Suspense fallback={<ComponentLoader />}>
+                  <HolidayCalendar />
+                </Suspense>
               </CardContent>
             </Card>
           </TabsContent>

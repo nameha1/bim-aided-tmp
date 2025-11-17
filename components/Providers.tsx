@@ -4,35 +4,42 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useSessionManager } from "@/hooks/use-session-manager";
-import WhatsAppWidget from "@/components/WhatsAppWidget";
-import ScrollToTop from "@/components/ScrollToTop";
-import { useState } from "react";
+import { SessionProvider } from "@/components/SessionProvider";
+import { useState, lazy, Suspense } from "react";
+
+// Lazy load non-critical components
+const WhatsAppWidget = lazy(() => import("@/components/WhatsAppWidget"));
+const ScrollToTop = lazy(() => import("@/components/ScrollToTop"));
 
 const queryClientOptions = {
   defaultOptions: {
     queries: {
       staleTime: 1000 * 60 * 5, // 5 minutes
+      gcTime: 1000 * 60 * 10, // 10 minutes
       refetchOnWindowFocus: false,
+      retry: 1,
+    },
+    mutations: {
+      retry: 1,
     },
   },
 };
-
-import { SessionProvider } from "@/components/SessionProvider";
-
-// ... existing code ...
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient(queryClientOptions));
 
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
+      <TooltipProvider delayDuration={300}>
         <SessionProvider>
-          <ScrollToTop />
+          <Suspense fallback={null}>
+            <ScrollToTop />
+          </Suspense>
           <Toaster />
           <Sonner />
-          <WhatsAppWidget />
+          <Suspense fallback={null}>
+            <WhatsAppWidget />
+          </Suspense>
           {children}
         </SessionProvider>
       </TooltipProvider>

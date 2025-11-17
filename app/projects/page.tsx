@@ -2,10 +2,18 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Navigation from "@/components/Navigation";
-import Footer from "@/components/Footer";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import dynamic from "next/dynamic";
+
+// Lazy load heavy components
+const Navigation = dynamic(() => import("@/components/Navigation"), {
+  loading: () => <div className="h-20 bg-background border-b" />,
+});
+
+const Footer = dynamic(() => import("@/components/Footer"), {
+  loading: () => <div className="h-96 bg-muted" />,
+});
 
 export default function Projects() {
   const categories = [

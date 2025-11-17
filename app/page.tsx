@@ -1,22 +1,53 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import Navigation from "@/components/Navigation";
-import Footer from "@/components/Footer";
-import ParallaxHero from "@/components/ParallaxHero";
-import { getDocuments } from "@/lib/firebase/firestore";
-import { where, orderBy as firestoreOrderBy, limit as firestoreLimit } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { Building2, Layers, Box, Globe, ArrowRight, CheckCircle2, Send } from "lucide-react";
+import Footer from "@/components/Footer";
+
+// Lazy load heavy components
+const Navigation = lazy(() => import("@/components/Navigation"));
+const ParallaxHero = lazy(() => import("@/components/ParallaxHero"));
+
+// Loading components
+const NavigationSkeleton = () => <div className="h-20 bg-background border-b" />;
+const HeroSkeleton = () => <div className="h-screen bg-gradient-to-b from-primary/10 to-background" />;
 
 export default function Landing() {
   const { toast } = useToast();
-  const [featuredProjects, setFeaturedProjects] = useState<any[]>([]);
+  
+  // Static fallback projects - initialize with these
+  const staticProjects = [
+    {
+      id: "1",
+      title: "Downtown Business Center",
+      category: "Commercial",
+      description: "Complete BIM modeling and coordination for a 30-story mixed-use development.",
+      image: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800",
+    },
+    {
+      id: "3",
+      title: "National Sports Arena",
+      category: "Cultural & Sports",
+      description: "Advanced structural and MEP modeling for large-scale sports facility.",
+      image: "https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?w=800",
+    },
+    {
+      id: "5",
+      title: "Metro Transit Station",
+      category: "Infrastructure & Municipal",
+      description: "Infrastructure BIM coordination for urban transit development.",
+      image: "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=800",
+    },
+  ];
+  
+  const [featuredProjects, setFeaturedProjects] = useState<any[]>(staticProjects);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -60,35 +91,10 @@ export default function Landing() {
   ];
 
   const stats = [
-    { value: "500+", label: "Projects Completed" },
-    { value: "50+", label: "Expert Team Members" },
-    { value: "15+", label: "Years Experience" },
+    { value: "200+", label: "Projects Completed" },
+    { value: "20+", label: "Expert Team Members" },
+    { value: "10+", label: "Years Experience" },
     { value: "98%", label: "Client Satisfaction" },
-  ];
-
-  // Static fallback projects
-  const staticProjects = [
-    {
-      id: "1",
-      title: "Downtown Business Center",
-      category: "Commercial",
-      description: "Complete BIM modeling and coordination for a 30-story mixed-use development.",
-      image: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800",
-    },
-    {
-      id: "3",
-      title: "National Sports Arena",
-      category: "Cultural & Sports",
-      description: "Advanced structural and MEP modeling for large-scale sports facility.",
-      image: "https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?w=800",
-    },
-    {
-      id: "5",
-      title: "Metro Transit Station",
-      category: "Infrastructure & Municipal",
-      description: "Infrastructure BIM coordination for urban transit development.",
-      image: "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=800",
-    },
   ];
 
   // Helper function to truncate description to 30 words
@@ -102,83 +108,91 @@ export default function Landing() {
   // Fetch featured projects from database
   useEffect(() => {
     const fetchFeaturedProjects = async () => {
-      console.log('[Landing Page] Fetching featured projects from Firestore...');
-      
-      let { data, error } = await getDocuments('projects', [
-        where('published', '==', true),
-        firestoreOrderBy('created_at', 'desc'),
-        firestoreLimit(3)
-      ]);
-
-      // If query fails (likely due to missing index), try without ordering
-      if (error && error.message?.includes('index')) {
-        console.warn('[Landing Page] ⚠️ Index required for ordering, fetching without orderBy');
-        const fallbackResult = await getDocuments('projects', [
+      try {
+        console.log('[Landing Page] Fetching featured projects from Firestore...');
+        
+        // Import Firebase functions dynamically
+        const { getDocuments } = await import('@/lib/firebase/firestore');
+        const { where, orderBy: firestoreOrderBy, limit: firestoreLimit } = await import('firebase/firestore');
+        
+        let { data, error } = await getDocuments('projects', [
           where('published', '==', true),
+          firestoreOrderBy('created_at', 'desc'),
           firestoreLimit(3)
         ]);
-        data = fallbackResult.data;
-        error = fallbackResult.error;
-        
-        // Sort in memory if we got data
-        if (data && data.length > 0) {
-          data = data.sort((a: any, b: any) => {
-            const aTime = a.created_at?.toMillis?.() || 0;
-            const bTime = b.created_at?.toMillis?.() || 0;
-            return bTime - aTime;
-          }).slice(0, 3);
+
+        // If query fails (likely due to missing index), try without ordering
+        if (error && error.message?.includes('index')) {
+          console.warn('[Landing Page] ⚠️ Index required for ordering, fetching without orderBy');
+          const fallbackResult = await getDocuments('projects', [
+            where('published', '==', true),
+            firestoreLimit(3)
+          ]);
+          data = fallbackResult.data;
+          error = fallbackResult.error;
+          
+          // Sort in memory if we got data
+          if (data && data.length > 0) {
+            data = data.sort((a: any, b: any) => {
+              const aTime = a.created_at?.toMillis?.() || 0;
+              const bTime = b.created_at?.toMillis?.() || 0;
+              return bTime - aTime;
+            }).slice(0, 3);
+          }
         }
-      }
 
-      if (error) {
-        console.error('[Landing Page] ❌ Error fetching projects:', error);
-      }
+        if (error) {
+          console.error('[Landing Page] ❌ Error fetching projects:', error);
+          console.log('[Landing Page] Keeping static fallback projects');
+          return; // Keep the staticProjects that were set in useState
+        }
 
-      console.log('[Landing Page] ✅ Fetched from Firestore:', data?.length, 'projects');
-      console.log('[Landing Page] Data:', data);
+        console.log('[Landing Page] ✅ Fetched from Firestore:', data?.length, 'projects');
+        console.log('[Landing Page] Data:', data);
 
-      if (data && data.length > 0) {
-        // Use database projects if available
-        console.log('[Landing Page] 📦 Raw project data from DB:', JSON.stringify(data, null, 2));
-        const dbProjects = data.map((p: any) => {
-          // Try image_url first, then gallery_image_1, then image, then fallback
-          let imageUrl = p.image_url;
-          
-          if (!imageUrl || imageUrl === 'N/A') {
-            console.log(`[Landing Page] ⚠️ No image_url for "${p.title}", checking gallery_image_1`);
-            imageUrl = p.gallery_image_1;
-          }
-          
-          if (!imageUrl || imageUrl === 'N/A') {
-            console.log(`[Landing Page] ⚠️ No gallery_image_1 for "${p.title}", checking image field`);
-            imageUrl = p.image;
-          }
-          
-          if (!imageUrl || imageUrl === 'N/A') {
-            console.log(`[Landing Page] ⚠️ No images found for "${p.title}", using fallback`);
-            imageUrl = "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1920";
-          }
-          
-          console.log(`[Landing Page] 🖼️ Project "${p.title}" - Final image: ${imageUrl}`);
-          
-          return {
-            id: p.id,
-            title: p.title,
-            category: p.category,
-            description: truncateDescription(p.description || ''),
-            image: imageUrl,
-          };
-        });
-        console.log('[Landing Page] 📊 Setting featured projects with database data');
-        console.log('[Landing Page] 🖼️ Final mapped projects:', JSON.stringify(dbProjects, null, 2));
-        setFeaturedProjects(dbProjects);
-      } else {
-        // Fallback to static projects
-        console.log('[Landing Page] ⚠️ No projects found or error, using static fallback');
-        setFeaturedProjects(staticProjects.map(p => ({
-          ...p,
-          description: truncateDescription(p.description),
-        })));
+        if (data && data.length > 0) {
+          // Use database projects if available
+          console.log('[Landing Page] 📦 Raw project data from DB:', JSON.stringify(data, null, 2));
+          const dbProjects = data.map((p: any) => {
+            // Try image_url first, then gallery_image_1, then image, then fallback
+            let imageUrl = p.image_url;
+            
+            if (!imageUrl || imageUrl === 'N/A') {
+              console.log(`[Landing Page] ⚠️ No image_url for "${p.title}", checking gallery_image_1`);
+              imageUrl = p.gallery_image_1;
+            }
+            
+            if (!imageUrl || imageUrl === 'N/A') {
+              console.log(`[Landing Page] ⚠️ No gallery_image_1 for "${p.title}", checking image field`);
+              imageUrl = p.image;
+            }
+            
+            if (!imageUrl || imageUrl === 'N/A') {
+              console.log(`[Landing Page] ⚠️ No images found for "${p.title}", using fallback`);
+              imageUrl = "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1920";
+            }
+            
+            console.log(`[Landing Page] 🖼️ Project "${p.title}" - Final image: ${imageUrl}`);
+            
+            return {
+              id: p.id,
+              title: p.title,
+              category: p.category,
+              description: truncateDescription(p.description || ''),
+              image: imageUrl,
+            };
+          });
+          console.log('[Landing Page] 📊 Setting featured projects with database data');
+          console.log('[Landing Page] 🖼️ Final mapped projects:', JSON.stringify(dbProjects, null, 2));
+          setFeaturedProjects(dbProjects);
+        } else {
+          // Keep static projects if no database data
+          console.log('[Landing Page] ⚠️ No projects found in database, keeping static fallback');
+        }
+      } catch (error) {
+        console.error('[Landing Page] ❌ Exception in fetchFeaturedProjects:', error);
+        console.log('[Landing Page] Keeping static fallback projects');
+        // Keep the staticProjects that were set in useState
       }
     };
 
@@ -346,14 +360,18 @@ export default function Landing() {
 
   return (
     <div className="min-h-screen">
-      <Navigation />
+      <Suspense fallback={<NavigationSkeleton />}>
+        <Navigation />
+      </Suspense>
       
       {/* Parallax Hero Section */}
-      <ParallaxHero />
+      <Suspense fallback={<HeroSkeleton />}>
+        <ParallaxHero />
+      </Suspense>
 
       {/* Stats Section */}
       <section className="py-16 bg-secondary">
-        <div className="container mx-auto px-4">
+        <div className="w-full mx-auto px-6 lg:px-12 xl:px-20">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {stats.map((stat, index) => (
               <div key={index} className="text-center">
@@ -369,10 +387,10 @@ export default function Landing() {
 
       {/* Services Section */}
       <section className="py-20">
-        <div className="container mx-auto px-4">
+        <div className="w-full mx-auto px-6 lg:px-12 xl:px-20">
           <div className="text-center mb-12">
             <h2 className="text-4xl font-bold mb-4">Our Services</h2>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+            <p className="text-xl text-muted-foreground mx-auto">
               Comprehensive BIM solutions tailored to your project needs
             </p>
           </div>
@@ -421,10 +439,10 @@ export default function Landing() {
 
       {/* Featured Projects Section */}
       <section className="py-20 bg-secondary">
-        <div className="container mx-auto px-4">
+        <div className="w-full mx-auto px-6 lg:px-12 xl:px-20">
           <div className="text-center mb-12">
             <h2 className="text-4xl font-bold mb-4">Featured Projects</h2>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+            <p className="text-xl text-muted-foreground mx-auto">
               Showcasing our expertise across diverse building and infrastructure projects
             </p>
           </div>
@@ -478,7 +496,7 @@ export default function Landing() {
 
       {/* Why Choose Us Section */}
       <section className="py-20">
-        <div className="container mx-auto px-4">
+        <div className="w-full mx-auto px-6 lg:px-12 xl:px-20">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div>
               <h2 className="text-4xl font-bold mb-6">Why Choose BIMaided?</h2>
@@ -511,19 +529,19 @@ export default function Landing() {
             <div className="grid grid-cols-2 gap-4">
               <Card className="border-border">
                 <CardHeader>
-                  <CardTitle className="text-3xl text-primary">15+</CardTitle>
+                  <CardTitle className="text-3xl text-primary">10+</CardTitle>
                   <CardDescription>Years of Experience</CardDescription>
                 </CardHeader>
               </Card>
               <Card className="border-border">
                 <CardHeader>
-                  <CardTitle className="text-3xl text-primary">500+</CardTitle>
+                  <CardTitle className="text-3xl text-primary">200+</CardTitle>
                   <CardDescription>Projects Delivered</CardDescription>
                 </CardHeader>
               </Card>
               <Card className="border-border">
                 <CardHeader>
-                  <CardTitle className="text-3xl text-primary">50+</CardTitle>
+                  <CardTitle className="text-3xl text-primary">20+</CardTitle>
                   <CardDescription>Team Members</CardDescription>
                 </CardHeader>
               </Card>
@@ -540,8 +558,8 @@ export default function Landing() {
 
       {/* Contact Form Section */}
       <section className="py-20 bg-secondary">
-        <div className="container mx-auto px-4">
-          <div className="max-w-6xl mx-auto">
+        <div className="w-full mx-auto px-6 lg:px-12 xl:px-20">
+          <div className="w-full mx-auto">
             <div className="text-center mb-12">
               <h2 className="text-4xl font-bold mb-4">Get In Touch</h2>
               <p className="text-xl text-muted-foreground">
@@ -597,12 +615,19 @@ export default function Landing() {
                 <div className="pt-6 border-t border-border">
                   <p className="text-sm text-muted-foreground mb-4">Prefer to reach us directly?</p>
                   <div className="space-y-3">
-                    <p className="flex items-center gap-2 text-sm">
-                      <span className="font-medium">Email:</span>
-                      <a href="mailto:design.bimaided@gmail.com" className="text-primary hover:underline">
-                        design.bimaided@gmail.com
-                      </a>
-                    </p>
+                    <div className="space-y-2">
+                      <p className="flex items-center gap-2 text-sm">
+                        <span className="font-medium">Email:</span>
+                        <a href="mailto:info@bimaided.com" className="text-primary hover:underline">
+                          info@bimaided.com
+                        </a>
+                      </p>
+                      <p className="flex items-center gap-2 text-sm pl-[52px]">
+                        <a href="mailto:info.bimaided@gmail.com" className="text-primary hover:underline">
+                          info.bimaided@gmail.com
+                        </a>
+                      </p>
+                    </div>
                     <p className="flex items-center gap-2 text-sm">
                       <span className="font-medium">Phone:</span>
                       <span>+880 1308-230988</span>
@@ -725,43 +750,41 @@ export default function Landing() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20">
-        <div className="container mx-auto px-4">
-          <Card className="bg-gradient-to-br from-sky-600 via-blue-600 to-sky-700 border-0 text-white max-w-5xl mx-auto overflow-hidden relative shadow-2xl">
-            {/* Background Pattern */}
-            <div className="absolute inset-0 opacity-10 bg-grid-pattern" />
-            
-            <CardHeader className="text-center py-16 px-6 relative z-10">
-              <CardTitle className="text-3xl md:text-4xl lg:text-5xl font-bold mb-6 text-white drop-shadow-lg">
+      <section className="py-20 px-4 md:px-6 lg:px-8 bg-gradient-to-br from-sky-50 via-blue-50 to-purple-50">
+        <div className="max-w-7xl mx-auto">
+          <div className="glass-card">
+            <CardHeader className="text-center py-12 md:py-14 lg:py-16 px-6 md:px-12 lg:px-16 relative z-10">
+              <CardTitle className="text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold mb-6 text-sky-600 drop-shadow-sm">
                 Ready to Start Your Project?
               </CardTitle>
-              <CardDescription className="text-lg md:text-xl text-white/95 mb-10 max-w-3xl mx-auto leading-relaxed">
+              <CardDescription className="text-lg md:text-xl lg:text-2xl text-gray-700 mb-10 max-w-4xl mx-auto leading-relaxed font-medium">
                 Let's discuss how we can help bring your vision to life with our BIM expertise
               </CardDescription>
-              <div className="flex flex-col sm:flex-row gap-5 justify-center">
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Link href="/contact">
                   <Button 
-                    size="lg" 
-                    className="text-base md:text-lg px-8 md:px-10 py-6 bg-white text-sky-600 hover:bg-gray-50 font-semibold shadow-xl hover:scale-105 transition-all rounded-full"
+                    size="default" 
+                    className="w-full sm:w-44 text-sm md:text-base px-6 py-5 bg-sky-600 hover:bg-sky-700 text-white font-semibold shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 rounded-lg"
                   >
                     Get In Touch
                   </Button>
                 </Link>
                 <Link href="/projects">
                   <Button 
-                    size="lg" 
+                    size="default" 
                     variant="outline" 
-                    className="text-base md:text-lg px-8 md:px-10 py-6 border-2 border-white text-white bg-transparent hover:bg-white hover:text-sky-600 font-semibold backdrop-blur-sm transition-all rounded-full shadow-lg"
+                    className="w-full sm:w-44 text-sm md:text-base px-6 py-5 border-2 border-sky-600 text-sky-600 bg-white/50 hover:bg-white/70 font-semibold backdrop-blur-sm transition-all duration-300 rounded-lg hover:shadow-lg hover:scale-105"
                   >
                     View Our Work
                   </Button>
                 </Link>
               </div>
             </CardHeader>
-          </Card>
+          </div>
         </div>
       </section>
 
+      
       <Footer />
     </div>
   );

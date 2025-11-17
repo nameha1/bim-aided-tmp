@@ -1,9 +1,17 @@
 "use client";
 
-import Navigation from "@/components/Navigation";
-import Footer from "@/components/Footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Target, Eye, Award } from "lucide-react";
+import dynamic from "next/dynamic";
+
+// Lazy load heavy components
+const Navigation = dynamic(() => import("@/components/Navigation"), {
+  loading: () => <div className="h-20 bg-background border-b" />,
+});
+
+const Footer = dynamic(() => import("@/components/Footer"), {
+  loading: () => <div className="h-96 bg-muted" />,
+});
 
 export default function About() {
   return (
@@ -105,59 +113,87 @@ export default function About() {
             </p>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-4xl mx-auto">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             <div className="text-center">
-              <div className="text-4xl font-bold text-primary mb-2">50+</div>
-              <div className="text-muted-foreground">Team Members</div>
+              <div className="text-4xl md:text-5xl font-bold text-primary mb-2">200+</div>
+              <div className="text-muted-foreground">Projects Completed</div>
             </div>
             <div className="text-center">
-              <div className="text-4xl font-bold text-primary mb-2">15+</div>
+              <div className="text-4xl md:text-5xl font-bold text-primary mb-2">20+</div>
+              <div className="text-muted-foreground">Expert Team Members</div>
+            </div>
+            <div className="text-center">
+              <div className="text-4xl md:text-5xl font-bold text-primary mb-2">10+</div>
               <div className="text-muted-foreground">Years Experience</div>
             </div>
             <div className="text-center">
-              <div className="text-4xl font-bold text-primary mb-2">20+</div>
-              <div className="text-muted-foreground">Countries Served</div>
-            </div>
-            <div className="text-center">
-              <div className="text-4xl font-bold text-primary mb-2">500+</div>
-              <div className="text-muted-foreground">Projects Delivered</div>
+              <div className="text-4xl md:text-5xl font-bold text-primary mb-2">98%</div>
+              <div className="text-muted-foreground">Client Satisfaction</div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Team Photos + Text Section
-          Layout: on md+ screens show two columns: left = text, right = 3 images stacked (alternative layout)
-          Uses images: public/images/about-team-2.jpg, about-team-3.jpg, about-team-4.jpg
-      */}
-      <section className="py-12 bg-base-100">
+      {/* Meet the Team Section - Alternating Image | Text Layout */}
+      <section className="py-16 bg-secondary">
         <div className="container mx-auto px-4">
-          <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-            <div>
-              <h3 className="text-2xl font-bold mb-4">Meet the Team</h3>
-              <p className="text-muted-foreground mb-6">
-                A snapshot from our studio — collaboration, focus and craft. Below are moments captured while our team works on modeling, coordination and reviews.
-              </p>
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold mb-4">Meet the Team</h2>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              A snapshot from our studio — collaboration, focus and craft. Below are moments captured while our team works on modeling, coordination and reviews.
+            </p>
+          </div>
 
-              <ul className="space-y-3 text-sm text-muted-foreground">
-                <li>• Cross-discipline coordination and clash resolution</li>
-                <li>• Detailed modeling and drawing production</li>
-                <li>• Project reviews and client collaboration</li>
-              </ul>
+          <div className="max-w-6xl mx-auto space-y-16">
+            {/* Row 1: Image Left | Text Right */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+              <div className="overflow-hidden rounded-lg shadow-lg">
+                <img 
+                  src="/images/about-team-2.jpg" 
+                  alt="Modeling and coordination" 
+                  className="w-full h-80 object-cover hover:scale-105 transition-transform duration-500"
+                />
+              </div>
+              <div>
+                <h3 className="text-2xl font-bold mb-4">Cross-discipline Coordination and Clash Resolution</h3>
+                <p className="text-muted-foreground leading-relaxed">
+                  Our team excels at cross-discipline coordination, ensuring seamless integration between architectural, structural, and MEP systems. Through advanced clash detection and resolution techniques, we identify and resolve conflicts before construction begins, saving time and reducing costly on-site changes.
+                </p>
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-4">
-              <figure className="overflow-hidden rounded-lg bg-white shadow-sm">
-                <img src="/images/about-team-2.jpg" alt="Modeling and coordination" className="w-full h-40 object-cover" />
-              </figure>
+            {/* Row 2: Text Left | Image Right */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+              <div className="order-2 md:order-1">
+                <h3 className="text-2xl font-bold mb-4">Detailed Modeling and Drawing Production</h3>
+                <p className="text-muted-foreground leading-relaxed">
+                  With meticulous attention to detail, our BIM specialists create comprehensive 3D models and production-ready construction documents. We leverage the latest software and industry best practices to deliver accurate, coordinated deliverables that meet the highest quality standards.
+                </p>
+              </div>
+              <div className="overflow-hidden rounded-lg shadow-lg order-1 md:order-2">
+                <img 
+                  src="/images/about-team-3.jpg" 
+                  alt="Focused drafting" 
+                  className="w-full h-80 object-cover hover:scale-105 transition-transform duration-500"
+                />
+              </div>
+            </div>
 
-              <figure className="overflow-hidden rounded-lg bg-white shadow-sm">
-                <img src="/images/about-team-3.jpg" alt="Focused drafting" className="w-full h-40 object-cover" />
-              </figure>
-
-              <figure className="overflow-hidden rounded-lg bg-white shadow-sm">
-                <img src="/images/about-team-4.jpg" alt="Project review" className="w-full h-40 object-cover" />
-              </figure>
+            {/* Row 3: Image Left | Text Right */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+              <div className="overflow-hidden rounded-lg shadow-lg">
+                <img 
+                  src="/images/about-team-4.jpg" 
+                  alt="Project review" 
+                  className="w-full h-80 object-cover hover:scale-105 transition-transform duration-500"
+                />
+              </div>
+              <div>
+                <h3 className="text-2xl font-bold mb-4">Project Reviews and Client Collaboration</h3>
+                <p className="text-muted-foreground leading-relaxed">
+                  Collaboration is at the heart of what we do. Through regular project reviews and direct client engagement, we ensure that every stakeholder's vision is realized. Our iterative review process guarantees that projects stay on track and meet all requirements and expectations.
+                </p>
+              </div>
             </div>
           </div>
         </div>

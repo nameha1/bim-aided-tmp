@@ -74,8 +74,8 @@ export async function createDocument<T = DocumentData>(
     const collectionRef = collection(db, collectionName);
     const docRef = await addDoc(collectionRef, {
       ...data,
-      createdAt: Timestamp.now(),
-      updatedAt: Timestamp.now(),
+      created_at: Timestamp.now(),
+      updated_at: Timestamp.now(),
     });
     return { data: docRef.id, error: null };
   } catch (error) {
@@ -97,7 +97,7 @@ export async function setDocument<T = DocumentData>(
     const docRef = doc(db, collectionName, docId);
     await setDoc(docRef, {
       ...data,
-      updatedAt: Timestamp.now(),
+      updated_at: Timestamp.now(),
     }, { merge });
     return { error: null };
   } catch (error) {
@@ -118,7 +118,7 @@ export async function updateDocument(
     const docRef = doc(db, collectionName, docId);
     await updateDoc(docRef, {
       ...data,
-      updatedAt: Timestamp.now(),
+      updated_at: Timestamp.now(),
     });
     return { error: null };
   } catch (error) {
@@ -163,10 +163,10 @@ export async function batchWrite(
       
       switch (op.type) {
         case 'set':
-          batch.set(docRef, { ...op.data, updatedAt: Timestamp.now() });
+          batch.set(docRef, { ...op.data, updated_at: Timestamp.now() });
           break;
         case 'update':
-          batch.update(docRef, { ...op.data, updatedAt: Timestamp.now() });
+          batch.update(docRef, { ...op.data, updated_at: Timestamp.now() });
           break;
         case 'delete':
           batch.delete(docRef);

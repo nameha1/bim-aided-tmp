@@ -1,11 +1,20 @@
 "use client";
 
 import { Building2, Layers, Box, Globe, ArrowRight } from "lucide-react";
-import Navigation from "@/components/Navigation";
-import Footer from "@/components/Footer";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import dynamic from "next/dynamic";
+import { Suspense } from "react";
+
+// Lazy load heavy components
+const Navigation = dynamic(() => import("@/components/Navigation"), {
+  loading: () => <div className="h-20 bg-background border-b" />,
+});
+
+const Footer = dynamic(() => import("@/components/Footer"), {
+  loading: () => <div className="h-96 bg-muted" />,
+});
 
 export default function Services() {
   const services = [
@@ -14,6 +23,7 @@ export default function Services() {
       title: "BIM Modeling",
       description: "Comprehensive 3D modeling services for architectural, structural, and MEP systems.",
       link: "/services/bim-modeling",
+      image: "/images/bim-services/BIM Modeling.jpeg",
       features: [
         "Architectural BIM Modeling",
         "Structural BIM Modeling",
@@ -27,6 +37,7 @@ export default function Services() {
       title: "Advanced BIM Services",
       description: "Sophisticated BIM solutions for complex project requirements.",
       link: "/services/advanced-bim",
+      image: "/images/bim-services/Advanced BIM.jpeg",
       features: [
         "Clash Detection & Coordination",
         "4D BIM (Construction Sequencing)",
@@ -40,6 +51,7 @@ export default function Services() {
       title: "VDC Services",
       description: "Virtual Design & Construction coordination for seamless project delivery.",
       link: "/services/vdc-services",
+      image: "/images/bim-services/VDC.jpeg",
       features: [
         "Virtual Design Coordination",
         "Construction Planning",
@@ -53,6 +65,7 @@ export default function Services() {
       title: "Global BIM Services",
       description: "International BIM standards compliance and consulting services.",
       link: "/services/global-bim",
+      image: "/images/bim-services/Global BIM.jpeg",
       features: [
         "BIM Standards Compliance",
         "BIM Implementation",
@@ -85,7 +98,7 @@ export default function Services() {
           <div className="absolute bottom-20 right-10 w-96 h-96 bg-white/5 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
         </div>
         
-        <div className="relative container mx-auto px-4 text-center text-white z-10 py-20">
+        <div className="relative w-full mx-auto px-6 lg:px-12 xl:px-20 text-center text-white z-10 py-20">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 mb-8 animate-fade-in">
             <Layers className="w-4 h-4" />
             <span className="text-sm font-medium">Comprehensive BIM Solutions</span>
@@ -95,11 +108,11 @@ export default function Services() {
             Our Services
           </h1>
           
-          <p className="text-lg md:text-xl lg:text-2xl mb-8 max-w-3xl mx-auto text-white/90 animate-fade-in" style={{ animationDelay: '0.2s' }}>
+          <p className="text-lg md:text-xl lg:text-2xl mb-8 mx-auto text-white/90 animate-fade-in" style={{ animationDelay: '0.2s' }}>
             Comprehensive BIM solutions designed to enhance your construction projects from concept to completion
           </p>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto animate-fade-in" style={{ animationDelay: '0.4s' }}>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mx-auto animate-fade-in" style={{ animationDelay: '0.4s' }}>
             <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-4">
               <Building2 className="w-8 h-8 mx-auto mb-2 text-white" />
               <p className="text-sm font-medium">BIM Modeling</p>
@@ -122,10 +135,10 @@ export default function Services() {
 
       {/* Services Grid */}
       <section className="py-20">
-        <div className="container mx-auto px-4">
+        <div className="w-full mx-auto px-6 lg:px-12 xl:px-20">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold mb-4">What We Offer</h2>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+            <p className="text-xl text-muted-foreground mx-auto">
               Expert BIM services tailored to meet the unique needs of your construction projects
             </p>
           </div>
@@ -133,11 +146,13 @@ export default function Services() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {services.map((service, index) => (
               <Card key={index} className="border-border overflow-hidden group hover:shadow-2xl transition-all duration-300">
-                {/* Image Section with Gradient Overlay */}
-                <div className="relative h-64 overflow-hidden bg-gradient-to-br from-primary/20 to-primary/5">
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <service.icon className="text-primary/20" size={120} />
-                  </div>
+                {/* Image Section */}
+                <div className="relative h-64 overflow-hidden">
+                  <img 
+                    src={service.image} 
+                    alt={service.title}
+                    className="w-full h-full object-cover"
+                  />
                   <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
                   <div className="absolute bottom-6 left-6">
                     <div className="w-16 h-16 rounded-xl bg-primary shadow-lg flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
@@ -186,8 +201,8 @@ export default function Services() {
 
       {/* Why Choose Our Services Section */}
       <section className="py-20 bg-secondary">
-        <div className="container mx-auto px-4">
-          <div className="max-w-5xl mx-auto">
+        <div className="w-full mx-auto px-6 lg:px-12 xl:px-20">
+          <div className="w-full mx-auto">
             <div className="text-center mb-16">
               <h2 className="text-4xl font-bold mb-4">Why Choose Our Services</h2>
               <p className="text-xl text-muted-foreground">
@@ -244,8 +259,8 @@ export default function Services() {
 
       {/* CTA Section */}
       <section className="py-20">
-        <div className="container mx-auto px-4">
-          <Card className="bg-gradient-to-r from-primary to-primary/90 border-0 text-white max-w-4xl mx-auto overflow-hidden relative">
+        <div className="w-full mx-auto px-6 lg:px-12 xl:px-20">
+          <Card className="bg-gradient-to-r from-primary to-primary/90 border-0 text-white mx-auto overflow-hidden relative">
             {/* Background Pattern */}
             <div className="absolute inset-0 opacity-10">
               <div className="absolute inset-0" style={{

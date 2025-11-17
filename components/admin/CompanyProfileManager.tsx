@@ -20,6 +20,21 @@ export default function CompanyProfileManager() {
   const [editingProfile, setEditingProfile] = useState<CompanyProfile | null>(null);
   const { toast } = useToast();
 
+  const handleSignatureUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData({ ...formData, signatureImage: reader.result as string });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeSignature = () => {
+    setFormData({ ...formData, signatureImage: "" });
+  };
+
   const [formData, setFormData] = useState<Partial<CompanyProfile>>({
     name: "",
     address: "",
@@ -31,6 +46,8 @@ export default function CompanyProfileManager() {
     phone: "",
     website: "",
     taxId: "",
+    signatureName: "",
+    signatureImage: "",
     isDefault: false,
   });
 
@@ -67,6 +84,8 @@ export default function CompanyProfileManager() {
       phone: "",
       website: "",
       taxId: "",
+      signatureName: "",
+      signatureImage: "",
       isDefault: false,
     });
     setEditingProfile(null);
@@ -310,6 +329,56 @@ export default function CompanyProfileManager() {
                     onChange={(e) => setFormData({ ...formData, taxId: e.target.value })}
                     placeholder="123-456-789"
                   />
+                </div>
+              </div>
+
+              <div className="border-t pt-4 mt-2">
+                <h4 className="text-sm font-semibold mb-4">Signature Information</h4>
+                
+                <div className="grid gap-2 mb-4">
+                  <Label htmlFor="signatureName">Authorized Signatory Name</Label>
+                  <Input
+                    id="signatureName"
+                    value={formData.signatureName}
+                    onChange={(e) => setFormData({ ...formData, signatureName: e.target.value })}
+                    placeholder="John Doe, Managing Director"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    This name will appear on all invoices using this profile
+                  </p>
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="signatureImage">Signature Image</Label>
+                  <Input
+                    id="signatureImage"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleSignatureUpload}
+                    className="cursor-pointer"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Upload a signature image (PNG, JPG, etc.)
+                  </p>
+                  {formData.signatureImage && (
+                    <div className="mt-2 p-4 border rounded-lg bg-muted">
+                      <div className="flex justify-between items-start mb-2">
+                        <Label>Preview:</Label>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={removeSignature}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <img
+                        src={formData.signatureImage}
+                        alt="Signature preview"
+                        className="max-w-xs max-h-32 object-contain bg-white p-2"
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
 

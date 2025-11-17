@@ -1,13 +1,22 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Navigation from "@/components/Navigation";
-import Footer from "@/components/Footer";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { MapPin, Briefcase, Clock, ExternalLink } from "lucide-react";
-import JobApplicationDialog from "@/components/JobApplicationDialog";
-import JobDetailsDialog from "@/components/JobDetailsDialog";
+import dynamic from "next/dynamic";
+
+// Lazy load heavy components
+const Navigation = dynamic(() => import("@/components/Navigation"), {
+  loading: () => <div className="h-20 bg-background border-b" />,
+});
+
+const Footer = dynamic(() => import("@/components/Footer"), {
+  loading: () => <div className="h-96 bg-muted" />,
+});
+
+const JobApplicationDialog = dynamic(() => import("@/components/JobApplicationDialog"));
+const JobDetailsDialog = dynamic(() => import("@/components/JobDetailsDialog"));
 
 export default function Career() {
   const [openings, setOpenings] = useState<any[]>([]);
@@ -22,32 +31,43 @@ export default function Career() {
         const { getDocuments } = await import('@/lib/firebase/firestore');
         const { where, orderBy } = await import('firebase/firestore');
         
+        console.log('Fetching job postings from Firestore...');
+        
         // Fetch active job postings from Firebase
         const { data, error } = await getDocuments('job_postings', [
           where('status', '==', 'active'),
           orderBy('created_at', 'desc')
         ]);
 
+        console.log('Firestore response:', { data, error });
+
         if (error) {
           console.error('Error fetching job postings:', error);
+          
+          // If it's an index error, try without ordering
+          if (error.code === 9 || error.message?.includes('index')) {
+            console.log('Index not ready, fetching without ordering...');
+            const { data: unorderedData, error: unorderedError } = await getDocuments('job_postings', [
+              where('status', '==', 'active')
+            ]);
+            
+            if (!unorderedError && unorderedData) {
+              // Sort manually by created_at
+              const sorted = unorderedData.sort((a: any, b: any) => {
+                const aTime = a.created_at?.toMillis?.() || 0;
+                const bTime = b.created_at?.toMillis?.() || 0;
+                return bTime - aTime;
+              });
+              console.log(`Found ${sorted.length} active job postings (sorted manually)`);
+              setOpenings(sorted);
+              return;
+            }
+          }
+          
           // Fallback to static data on error
-          setOpenings([
-            {
-              title: "Senior BIM Manager",
-              department: "BIM Services",
-              location: "Remote",
-              employment_type: "full_time",
-              description: "Lead BIM coordination and implementation for large-scale projects.",
-            },
-            {
-              title: "Revit Modeler",
-              department: "Modeling",
-              location: "Hybrid",
-              employment_type: "full_time",
-              description: "Create detailed architectural and structural BIM models.",
-            },
-          ]);
+          setOpenings([]);
         } else {
+          console.log(`Found ${data?.length || 0} active job postings`);
           setOpenings(data || []);
         }
       } catch (error) {
@@ -79,7 +99,7 @@ export default function Career() {
     "Competitive salary and benefits",
     "Professional development opportunities",
     "Work-life balance",
-    "Health insurance coverage",
+    "Employee Well Being",
     "Remote work options",
     "Collaborative team environment",
   ];

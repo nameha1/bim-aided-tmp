@@ -1,13 +1,21 @@
 "use client";
 
 import { Building2, CheckCircle2, ArrowRight, Layers, Box, Eye, Scan, Users, FileText, Target, Zap, Shield, TrendingUp } from "lucide-react";
-import Navigation from "@/components/Navigation";
-import Footer from "@/components/Footer";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { useEffect, useRef } from "react";
+import dynamic from "next/dynamic";
+
+// Lazy load heavy components
+const Navigation = dynamic(() => import("@/components/Navigation"), {
+  loading: () => <div className="h-20 bg-background border-b" />,
+});
+
+const Footer = dynamic(() => import("@/components/Footer"), {
+  loading: () => <div className="h-96 bg-muted" />,
+});
 
 export default function BIMModeling() {
   const servicesRef = useRef<HTMLDivElement>(null);

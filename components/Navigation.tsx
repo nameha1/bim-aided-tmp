@@ -18,6 +18,7 @@ const Navigation = () => {
       submenu: [
         { name: "BIM Modeling", path: "/services/bim-modeling", description: "3D modeling for Architecture, Structure & MEP" },
         { name: "Advanced BIM", path: "/services/advanced-bim", description: "Clash detection & 4D/5D simulation" },
+        { name: "Scan-to-BIM", path: "/services/advanced-bim#scan-to-bim", description: "Laser scanning to BIM conversion" },
         { name: "VDC Services", path: "/services/vdc-services", description: "Virtual design & construction planning" },
         { name: "Global BIM", path: "/services/global-bim", description: "International BIM coordination" },
       ]
@@ -33,13 +34,13 @@ const Navigation = () => {
   return (
     <nav className="fixed w-full top-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border">
       <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex items-center justify-between h-20 py-3">
           {/* Logo - Left side */}
           <Link href="/" className="flex items-center gap-2 order-1 md:order-none">
             <img 
               src="/Logo-BIMaided.png" 
               alt="BIM aided Logo" 
-              className="h-12 md:h-14 w-auto object-contain"
+              className="h-14 md:h-16 w-auto object-contain"
             />
           </Link>
 
@@ -74,10 +75,10 @@ const Navigation = () => {
                             <Link
                               key={sublink.path}
                               href={sublink.path}
-                              className={`p-4 rounded-lg transition-colors ${
+                              className={`p-4 rounded-lg transition-all border border-transparent ${
                                 isActive(sublink.path)
-                                  ? "bg-primary/10 text-primary"
-                                  : "hover:bg-primary/5"
+                                  ? "bg-primary/10 text-primary border-primary/20"
+                                  : "hover:bg-primary/15 hover:border-primary/30 hover:shadow-sm"
                               }`}
                             >
                               <div className="font-semibold mb-1 text-foreground">{sublink.name}</div>

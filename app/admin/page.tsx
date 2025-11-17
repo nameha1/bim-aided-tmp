@@ -1,30 +1,43 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { Users, UserPlus, Calendar, LogOut, Briefcase, ClipboardList, Globe, DollarSign, Menu, X, FileText, Settings, Clock } from "lucide-react";
-import AddEmployeeForm from "@/components/admin/AddEmployeeForm";
-import EmployeeList from "@/components/admin/EmployeeList";
-import LeaveRequests from "@/components/admin/LeaveRequests";
-import LeavePolicyManager from "@/components/admin/LeavePolicyManager";
-import AttendancePolicyManager from "@/components/admin/AttendancePolicyManager";
-import HolidayManager from "@/components/admin/HolidayManager";
-import ProjectManager from "@/components/admin/ProjectManager";
-import CareerManager from "@/components/admin/CareerManager";
-import ApplicationManager from "@/components/admin/ApplicationManager";
-import AssignmentManager from "@/components/admin/AssignmentManager";
-import ManualAttendanceEntry from "@/components/admin/ManualAttendanceEntry";
-import IPWhitelistManager from "@/components/admin/IPWhitelistManager";
-import AttendanceRecords from "@/components/admin/AttendanceRecords";
-import ContactInquiriesManager from "@/components/admin/ContactInquiriesManager";
-import PayrollManager from "@/components/admin/PayrollManager";
-import { TransactionManager } from "@/components/admin/TransactionManager";
-import InvoiceManager from "@/components/admin/InvoiceManager";
+
+// Lazy load heavy admin components
+const AddEmployeeForm = lazy(() => import("@/components/admin/AddEmployeeForm"));
+const EmployeeList = lazy(() => import("@/components/admin/EmployeeList"));
+const LeaveRequests = lazy(() => import("@/components/admin/LeaveRequests"));
+const LeavePolicyManager = lazy(() => import("@/components/admin/LeavePolicyManager"));
+const AttendancePolicyManager = lazy(() => import("@/components/admin/AttendancePolicyManager"));
+const HolidayManager = lazy(() => import("@/components/admin/HolidayManager"));
+const ProjectManager = lazy(() => import("@/components/admin/ProjectManager"));
+const CareerManager = lazy(() => import("@/components/admin/CareerManager"));
+const ApplicationManager = lazy(() => import("@/components/admin/ApplicationManager"));
+const ManualAttendanceEntry = lazy(() => import("@/components/admin/ManualAttendanceEntry"));
+const IPWhitelistManager = lazy(() => import("@/components/admin/IPWhitelistManager"));
+const AttendanceRecords = lazy(() => import("@/components/admin/AttendanceRecords"));
+const ContactInquiriesManager = lazy(() => import("@/components/admin/ContactInquiriesManager"));
+const PayrollManager = lazy(() => import("@/components/admin/PayrollManager"));
+const TransactionManager = lazy(() => import("@/components/admin/TransactionManager").then(mod => ({ default: mod.TransactionManager })));
+const InvoiceManager = lazy(() => import("@/components/admin/InvoiceManager"));
+const ClientManager = lazy(() => import("@/components/admin/ClientManager"));
+
+// Loading component
+const ComponentLoader = () => (
+  <div className="flex items-center justify-center py-12">
+    <div className="text-center">
+      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary mx-auto mb-3"></div>
+      <p className="text-sm text-muted-foreground">Loading...</p>
+    </div>
+  </div>
+);
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("employees");
@@ -52,31 +65,19 @@ export default function AdminDashboard() {
       const { getDocuments } = await import("@/lib/firebase/firestore");
       const { where } = await import("firebase/firestore");
 
-      // Fetch all employees
-      const { data: allEmployees } = await getDocuments("employees");
-      const totalEmployees = allEmployees?.length || 0;
-
-      // Count active employees
-      const { data: activeEmps } = await getDocuments("employees", [
-        where("status", "==", "active")
+      // Batch all queries together for better performance
+      const [allEmployeesResult, activeEmpsResult, pendingLeavesResult, applicationsResult] = await Promise.all([
+        getDocuments("employees"),
+        getDocuments("employees", [where("status", "==", "active")]),
+        getDocuments("leave_requests", [where("status", "==", "pending_admin")]),
+        getDocuments("job_applications"),
       ]);
-      const activeEmployees = activeEmps?.length || 0;
-
-      // Fetch pending leave requests (only those needing admin approval)
-      const { data: pendingLeavesData } = await getDocuments("leave_requests", [
-        where("status", "==", "pending_admin")
-      ]);
-      const pendingLeaves = pendingLeavesData?.length || 0;
-
-      // Fetch job applications
-      const { data: applicationsData } = await getDocuments("job_applications");
-      const totalApplications = applicationsData?.length || 0;
 
       setStats({
-        totalEmployees,
-        activeEmployees,
-        pendingLeaves,
-        totalApplications,
+        totalEmployees: allEmployeesResult.data?.length || 0,
+        activeEmployees: activeEmpsResult.data?.length || 0,
+        pendingLeaves: pendingLeavesResult.data?.length || 0,
+        totalApplications: applicationsResult.data?.length || 0,
       });
     } catch (error) {
       console.error("Error fetching stats:", error);
@@ -136,13 +137,14 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 overflow-x-hidden max-w-[100vw]">
       {/* Header with Logo */}
-      <header className="border-b bg-white dark:bg-slate-900 shadow-sm sticky top-0 z-50 w-full max-w-[100vw] overflow-x-hidden">
-        <div className="w-full max-w-full px-4 md:px-6 py-3 md:py-4 flex items-center justify-between">
-          {/* Mobile Menu Button */}
+            {/* Header with Logo */}
+      <header className="sticky top-0 z-40 border-b bg-background">
+        <div className="flex h-20 items-center justify-between px-4 md:px-6 py-3">
+          {/* Mobile Menu Button - Left side on mobile */}
           <Button
             variant="ghost"
-            size="icon"
-            className="md:hidden flex-shrink-0"
+            size="sm"
+            className="md:hidden"
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
           >
             {isSidebarOpen ? <X size={24} /> : <Menu size={24} />}
@@ -152,9 +154,9 @@ export default function AdminDashboard() {
           <img 
             src="/Logo-BIMaided.png" 
             alt="BIM aided Logo" 
-            className="h-10 md:h-14 w-auto object-contain flex-shrink-0"
+            className="h-14 md:h-16 w-auto object-contain mx-auto md:mx-0"
           />
-          
+
           {/* Logout Button - Right side */}
           <Button variant="outline" onClick={handleLogout} size="sm" className="md:size-default flex-shrink-0">
             <LogOut size={16} className="md:mr-2" />
@@ -309,6 +311,17 @@ export default function AdminDashboard() {
               <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-2">Projects & Work</h2>
               <nav className="space-y-1">
                 <Button
+                  variant={activeTab === "clients" ? "default" : "ghost"}
+                  className={`w-full justify-start gap-3 ${activeTab === "clients" ? "bg-cyan-500 text-white hover:bg-cyan-600" : "hover:bg-cyan-50 hover:text-cyan-700 dark:hover:bg-slate-800"}`}
+                  onClick={() => {
+                    setActiveTab("clients");
+                    setIsSidebarOpen(false);
+                  }}
+                >
+                  <Users size={18} />
+                  <span>Clients</span>
+                </Button>
+                <Button
                   variant={activeTab === "projects" ? "default" : "ghost"}
                   className={`w-full justify-start gap-3 ${activeTab === "projects" ? "bg-cyan-500 text-white hover:bg-cyan-600" : "hover:bg-cyan-50 hover:text-cyan-700 dark:hover:bg-slate-800"}`}
                   onClick={() => {
@@ -318,17 +331,6 @@ export default function AdminDashboard() {
                 >
                   <Briefcase size={18} />
                   <span>Projects</span>
-                </Button>
-                <Button
-                  variant={activeTab === "assignments" ? "default" : "ghost"}
-                  className={`w-full justify-start gap-3 ${activeTab === "assignments" ? "bg-cyan-500 text-white hover:bg-cyan-600" : "hover:bg-cyan-50 hover:text-cyan-700 dark:hover:bg-slate-800"}`}
-                  onClick={() => {
-                    setActiveTab("assignments");
-                    setIsSidebarOpen(false);
-                  }}
-                >
-                  <ClipboardList size={18} />
-                  <span>Assignments</span>
                 </Button>
               </nav>
             </div>
@@ -480,7 +482,7 @@ export default function AdminDashboard() {
             <TabsTrigger value="leave-policies">Leave Policies</TabsTrigger>
             <TabsTrigger value="attendance-policy">Attendance Policy</TabsTrigger>
             <TabsTrigger value="holidays">Holiday Management</TabsTrigger>
-            <TabsTrigger value="assignments">Assignments</TabsTrigger>
+            <TabsTrigger value="clients">Clients</TabsTrigger>
             <TabsTrigger value="projects">Projects</TabsTrigger>
             <TabsTrigger value="careers">Career Postings</TabsTrigger>
             <TabsTrigger value="applications">Job Applications</TabsTrigger>
@@ -497,7 +499,9 @@ export default function AdminDashboard() {
                 <CardDescription>Manage your organization's employees</CardDescription>
               </CardHeader>
               <CardContent className="pt-6">
-                <EmployeeList key={refreshKey} onUpdate={handleEmployeeUpdate} />
+                <Suspense fallback={<ComponentLoader />}>
+                  <EmployeeList key={refreshKey} onUpdate={handleEmployeeUpdate} />
+                </Suspense>
               </CardContent>
             </Card>
           </TabsContent>
@@ -512,7 +516,9 @@ export default function AdminDashboard() {
                 <CardDescription>Create a new employee account</CardDescription>
               </CardHeader>
               <CardContent className="pt-6">
-                <AddEmployeeForm onSuccess={handleEmployeeUpdate} />
+                <Suspense fallback={<ComponentLoader />}>
+                  <AddEmployeeForm onSuccess={handleEmployeeUpdate} />
+                </Suspense>
               </CardContent>
             </Card>
           </TabsContent>
@@ -527,24 +533,34 @@ export default function AdminDashboard() {
                   </CardTitle>
                   <CardDescription>View and manage employee attendance records</CardDescription>
                 </div>
-                <ManualAttendanceEntry onSuccess={() => setRefreshKey((prev) => prev + 1)} />
+                <Suspense fallback={<div className="h-10 w-10" />}>
+                  <ManualAttendanceEntry onSuccess={() => setRefreshKey((prev) => prev + 1)} />
+                </Suspense>
               </CardHeader>
               <CardContent className="pt-6">
-                <AttendanceRecords key={refreshKey} />
+                <Suspense fallback={<ComponentLoader />}>
+                  <AttendanceRecords key={refreshKey} />
+                </Suspense>
               </CardContent>
             </Card>
           </TabsContent>
 
           <TabsContent value="invoices">
-            <InvoiceManager />
+            <Suspense fallback={<ComponentLoader />}>
+              <InvoiceManager />
+            </Suspense>
           </TabsContent>
 
           <TabsContent value="payroll">
-            <PayrollManager />
+            <Suspense fallback={<ComponentLoader />}>
+              <PayrollManager />
+            </Suspense>
           </TabsContent>
 
           <TabsContent value="ip-whitelist">
-            <IPWhitelistManager />
+            <Suspense fallback={<ComponentLoader />}>
+              <IPWhitelistManager />
+            </Suspense>
           </TabsContent>
 
           <TabsContent value="leave-requests">
@@ -557,7 +573,9 @@ export default function AdminDashboard() {
                 <CardDescription>Review and approve employee leave requests</CardDescription>
               </CardHeader>
               <CardContent className="pt-6">
-                <LeaveRequests onUpdate={fetchStats} />
+                <Suspense fallback={<ComponentLoader />}>
+                  <LeaveRequests onUpdate={fetchStats} />
+                </Suspense>
               </CardContent>
             </Card>
           </TabsContent>
@@ -572,7 +590,9 @@ export default function AdminDashboard() {
                 <CardDescription>Define leave types, allowances, and salary impact rules</CardDescription>
               </CardHeader>
               <CardContent className="pt-6">
-                <LeavePolicyManager />
+                <Suspense fallback={<ComponentLoader />}>
+                  <LeavePolicyManager />
+                </Suspense>
               </CardContent>
             </Card>
           </TabsContent>
@@ -587,7 +607,9 @@ export default function AdminDashboard() {
                 <CardDescription>Configure office hours, grace periods, and late arrival penalties</CardDescription>
               </CardHeader>
               <CardContent className="pt-6">
-                <AttendancePolicyManager />
+                <Suspense fallback={<ComponentLoader />}>
+                  <AttendancePolicyManager />
+                </Suspense>
               </CardContent>
             </Card>
           </TabsContent>
@@ -602,13 +624,28 @@ export default function AdminDashboard() {
                 <CardDescription>Configure holidays and government off days that affect working days calculation</CardDescription>
               </CardHeader>
               <CardContent className="pt-6">
-                <HolidayManager />
+                <Suspense fallback={<ComponentLoader />}>
+                  <HolidayManager />
+                </Suspense>
               </CardContent>
             </Card>
           </TabsContent>
 
-          <TabsContent value="assignments">
-            <AssignmentManager />
+          <TabsContent value="clients">
+            <Card>
+              <CardHeader className="border-b">
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="text-cyan-500" size={24} />
+                  Client Management
+                </CardTitle>
+                <CardDescription>Manage clients, their information, and related work</CardDescription>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <Suspense fallback={<ComponentLoader />}>
+                  <ClientManager />
+                </Suspense>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="projects">
@@ -621,7 +658,9 @@ export default function AdminDashboard() {
                 <CardDescription>Add and manage projects for the website portfolio</CardDescription>
               </CardHeader>
               <CardContent className="pt-6">
-                <ProjectManager />
+                <Suspense fallback={<ComponentLoader />}>
+                  <ProjectManager />
+                </Suspense>
               </CardContent>
             </Card>
           </TabsContent>
@@ -636,13 +675,17 @@ export default function AdminDashboard() {
                 <CardDescription>Manage job openings on the careers page</CardDescription>
               </CardHeader>
               <CardContent className="pt-6">
-                <CareerManager />
+                <Suspense fallback={<ComponentLoader />}>
+                  <CareerManager />
+                </Suspense>
               </CardContent>
             </Card>
           </TabsContent>
 
           <TabsContent value="applications">
-            <ApplicationManager />
+            <Suspense fallback={<ComponentLoader />}>
+              <ApplicationManager />
+            </Suspense>
           </TabsContent>
 
           <TabsContent value="contact-inquiries">
@@ -655,13 +698,17 @@ export default function AdminDashboard() {
                 <CardDescription>Manage and respond to website contact form submissions</CardDescription>
               </CardHeader>
               <CardContent className="pt-6">
-                <ContactInquiriesManager />
+                <Suspense fallback={<ComponentLoader />}>
+                  <ContactInquiriesManager />
+                </Suspense>
               </CardContent>
             </Card>
           </TabsContent>
 
           <TabsContent value="transactions">
-            <TransactionManager />
+            <Suspense fallback={<ComponentLoader />}>
+              <TransactionManager />
+            </Suspense>
           </TabsContent>
         </Tabs>
         </main>

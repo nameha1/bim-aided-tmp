@@ -42,7 +42,26 @@ const CareerManager = () => {
         orderBy("created_at", "desc")
       ]);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching postings with ordering:', error);
+        
+        // If index is not ready, fetch without ordering and sort manually
+        if (error.code === 9 || error.message?.includes('index')) {
+          const { data: unorderedData, error: unorderedError } = await getDocuments("job_postings");
+          
+          if (!unorderedError && unorderedData) {
+            const sorted = unorderedData.sort((a: any, b: any) => {
+              const aTime = a.created_at?.toMillis?.() || 0;
+              const bTime = b.created_at?.toMillis?.() || 0;
+              return bTime - aTime;
+            });
+            setPostings(sorted);
+            return;
+          }
+        }
+        
+        throw error;
+      }
       setPostings(data || []);
     } catch (error) {
       console.error("Error fetching postings:", error);

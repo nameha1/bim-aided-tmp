@@ -20,7 +20,6 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Download, Calendar, Users, Clock } from "lucide-react";
 import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
-import * as XLSX from 'xlsx';
 
 interface AttendanceRecord {
   id: string;
@@ -120,8 +119,11 @@ const AttendanceRecords = () => {
     }
   };
 
-  const exportToExcel = () => {
+  const exportToExcel = async () => {
     try {
+      // Dynamically import XLSX only when needed
+      const XLSX = await import('xlsx');
+      
       // Prepare data for export
       const exportData = records.map((record) => ({
         Date: format(new Date(record.date), "yyyy-MM-dd"),

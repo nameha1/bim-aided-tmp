@@ -22,20 +22,26 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Validate file type (images only)
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    // Validate file type (images and documents)
+    const allowedTypes = [
+      'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp',
+      'application/pdf',
+      'application/msword', // .doc
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
+    ];
     if (!allowedTypes.includes(file.type)) {
       return NextResponse.json(
-        { success: false, message: 'Invalid file type. Only images are allowed.' },
+        { success: false, message: 'Invalid file type. Allowed: images, PDF, DOC, DOCX' },
         { status: 400 }
       );
     }
 
-    // Validate file size (max 5MB)
-    const maxSize = 5 * 1024 * 1024; // 5MB
+    // Validate file size (max 10MB for documents, 5MB for images)
+    const isImage = file.type.startsWith('image/');
+    const maxSize = isImage ? 5 * 1024 * 1024 : 10 * 1024 * 1024; // 5MB for images, 10MB for documents
     if (file.size > maxSize) {
       return NextResponse.json(
-        { success: false, message: 'File too large. Maximum size is 5MB.' },
+        { success: false, message: `File too large. Maximum size is ${isImage ? '5MB' : '10MB'}.` },
         { status: 400 }
       );
     }

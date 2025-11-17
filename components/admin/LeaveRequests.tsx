@@ -3,12 +3,20 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Check, X, FileText, ExternalLink, Info, AlertCircle } from "lucide-react";
+import { Check, X, FileText, ExternalLink, Info, AlertCircle, Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { format, startOfMonth, endOfMonth, subMonths, addMonths } from "date-fns";
 
 interface LeaveRequestsProps {
   onUpdate: () => void;
@@ -16,24 +24,31 @@ interface LeaveRequestsProps {
 
 const LeaveRequests = ({ onUpdate }: LeaveRequestsProps) => {
   const [requests, setRequests] = useState<any[]>([]);
+  const [allRequests, setAllRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedMonth, setSelectedMonth] = useState(new Date());
+  const [filterStatus, setFilterStatus] = useState<string>("all");
   const { toast } = useToast();
 
   useEffect(() => {
     fetchLeaveRequests();
   }, []);
 
+  useEffect(() => {
+    filterRequestsByMonth();
+  }, [selectedMonth, filterStatus, allRequests]);
+
   const fetchLeaveRequests = async () => {
     try {
-      // Only fetch requests that need admin approval (supervisor already approved or no supervisor)
-      const response = await fetch('/api/leave-requests?admin_pending=true');
+      // Fetch all leave requests (not just admin pending)
+      const response = await fetch('/api/leave-requests');
       const result = await response.json();
 
       if (!response.ok) {
         throw new Error(result.message || 'Failed to fetch leave requests');
       }
 
-      setRequests(result.data || []);
+      setAllRequests(result.data || []);
     } catch (error: any) {
       console.error("Error fetching leave requests:", error);
       toast({
@@ -44,6 +59,40 @@ const LeaveRequests = ({ onUpdate }: LeaveRequestsProps) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const filterRequestsByMonth = () => {
+    const monthStart = startOfMonth(selectedMonth);
+    const monthEnd = endOfMonth(selectedMonth);
+
+    let filtered = allRequests.filter((request) => {
+      // Parse the start_date to check if it falls within the selected month
+      const requestDate = new Date(request.start_date);
+      return requestDate >= monthStart && requestDate <= monthEnd;
+    });
+
+    // Apply status filter
+    if (filterStatus === "pending") {
+      filtered = filtered.filter(r => r.status === "pending_admin" || r.status === "pending_supervisor");
+    } else if (filterStatus === "approved") {
+      filtered = filtered.filter(r => r.status === "approved");
+    } else if (filterStatus === "rejected") {
+      filtered = filtered.filter(r => r.status === "rejected");
+    }
+
+    setRequests(filtered);
+  };
+
+  const handlePreviousMonth = () => {
+    setSelectedMonth(subMonths(selectedMonth, 1));
+  };
+
+  const handleNextMonth = () => {
+    setSelectedMonth(addMonths(selectedMonth, 1));
+  };
+
+  const handleCurrentMonth = () => {
+    setSelectedMonth(new Date());
   };
 
   const getLeaveTypeCategory = (leaveType: string) => {
@@ -189,24 +238,86 @@ const LeaveRequests = ({ onUpdate }: LeaveRequestsProps) => {
   }
 
   return (
-    <div className="overflow-x-auto">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Employee</TableHead>
-            <TableHead>Leave Type</TableHead>
-            <TableHead>Duration</TableHead>
-            <TableHead>Date Range</TableHead>
-            <TableHead>Salary Impact</TableHead>
-            <TableHead>Reason</TableHead>
-            <TableHead>Document</TableHead>
-            <TableHead>Supervisor</TableHead>
-            <TableHead>Admin</TableHead>
-            <TableHead>Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {requests.map((request) => {
+    <div className="space-y-4">
+      {/* Month and Status Filters */}
+      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between bg-gray-50 p-4 rounded-lg border">
+        <div className="flex items-center gap-2">
+          <Calendar className="h-5 w-5 text-gray-500" />
+          <span className="text-sm font-medium text-gray-700">Filter by Month:</span>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handlePreviousMonth}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <div className="px-4 py-2 bg-white rounded-md border text-sm font-medium min-w-[140px] text-center">
+              {format(selectedMonth, "MMMM yyyy")}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleNextMonth}
+              disabled={selectedMonth >= new Date()}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCurrentMonth}
+            >
+              Today
+            </Button>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-gray-700">Status:</span>
+          <Select value={filterStatus} onValueChange={setFilterStatus}>
+            <SelectTrigger className="w-[150px]">
+              <SelectValue placeholder="All Requests" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Requests</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="approved">Approved</SelectItem>
+              <SelectItem value="rejected">Rejected</SelectItem>
+            </SelectContent>
+          </Select>
+          <span className="text-sm text-gray-500">
+            ({requests.length} {requests.length === 1 ? 'request' : 'requests'})
+          </span>
+        </div>
+      </div>
+
+      {/* Leave Requests Table */}
+      <div className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Employee</TableHead>
+              <TableHead>Leave Type</TableHead>
+              <TableHead>Duration</TableHead>
+              <TableHead>Date Range</TableHead>
+              <TableHead>Salary Impact</TableHead>
+              <TableHead>Reason</TableHead>
+              <TableHead>Document</TableHead>
+              <TableHead>Supervisor</TableHead>
+              <TableHead>Admin</TableHead>
+              <TableHead>Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {requests.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                  No leave requests found for {format(selectedMonth, "MMMM yyyy")}
+                </TableCell>
+              </TableRow>
+            ) : (
+              requests.map((request) => {
             const typeInfo = getLeaveTypeCategory(request.leave_type);
             const salaryImpact = getSalaryImpactInfo(request);
             
@@ -322,9 +433,11 @@ const LeaveRequests = ({ onUpdate }: LeaveRequestsProps) => {
               </TableCell>
               </TableRow>
             );
-          })}
+          })
+            )}
         </TableBody>
       </Table>
+      </div>
     </div>
   );
 };

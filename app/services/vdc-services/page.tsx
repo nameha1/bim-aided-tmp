@@ -1,13 +1,21 @@
 "use client";
 
 import { Box, CheckCircle2, ArrowRight, Layers, Users, Calendar, Package, Ruler, ClipboardCheck, Settings, Target, Zap, Shield, TrendingUp } from "lucide-react";
-import Navigation from "@/components/Navigation";
-import Footer from "@/components/Footer";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { useEffect, useRef } from "react";
+import dynamic from "next/dynamic";
+
+// Lazy load heavy components
+const Navigation = dynamic(() => import("@/components/Navigation"), {
+  loading: () => <div className="h-20 bg-background border-b" />,
+});
+
+const Footer = dynamic(() => import("@/components/Footer"), {
+  loading: () => <div className="h-96 bg-muted" />,
+});
 
 export default function VDCServices() {
   const servicesRef = useRef<HTMLDivElement>(null);
@@ -328,7 +336,7 @@ export default function VDCServices() {
                         <div className="w-12 h-12 rounded-lg bg-primary/90 backdrop-blur-sm flex items-center justify-center">
                           <service.icon className="text-white" size={24} />
                         </div>
-                        <h3 className="text-2xl md:text-3xl font-bold text-white drop-shadow-lg">{service.title}</h3>
+                        <h3 className="text-2xl md:text-3xl font-bold drop-shadow-2xl" style={{ color: '#30c4fd' }}>{service.title}</h3>
                       </div>
                     </div>
                   </div>
@@ -397,7 +405,7 @@ export default function VDCServices() {
                     <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
                       <benefit.icon className="text-primary" size={24} />
                     </div>
-                    <CardTitle className="text-lg mb-2">{benefit.title}</CardTitle>
+                    <CardTitle className="text-lg mb-2 text-foreground font-bold">{benefit.title}</CardTitle>
                     <CardDescription className="leading-relaxed">
                       {benefit.description}
                     </CardDescription>

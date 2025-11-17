@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Invoice, InvoiceItem, CompanyProfile, BankDetails, ClientInfo } from "@/types/invoice";
+import { Client } from "@/types/client";
 import { getDocuments, createDocument, updateDocument } from "@/lib/firebase/firestore";
 import { where } from "firebase/firestore";
 import { Plus, Trash2, Download, Eye } from "lucide-react";
@@ -26,6 +27,8 @@ export default function InvoiceForm({ editingInvoice, onSuccess, onCancel }: Inv
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [companyProfiles, setCompanyProfiles] = useState<CompanyProfile[]>([]);
   const [bankDetails, setBankDetails] = useState<BankDetails[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [selectedClientId, setSelectedClientId] = useState<string>("");
 
   // Form state
   const [invoiceNumber, setInvoiceNumber] = useState("");
@@ -62,6 +65,7 @@ export default function InvoiceForm({ editingInvoice, onSuccess, onCancel }: Inv
   useEffect(() => {
     fetchProfiles();
     fetchBankDetails();
+    fetchClients();
     generateInvoiceNumber();
   }, []);
 
@@ -120,6 +124,49 @@ export default function InvoiceForm({ editingInvoice, onSuccess, onCancel }: Inv
       setBankDetails(data || []);
     } catch (error) {
       console.error("Error fetching bank details:", error);
+    }
+  };
+
+  const fetchClients = async () => {
+    try {
+      const { data } = await getDocuments<Client>("clients");
+      setClients(data || []);
+    } catch (error) {
+      console.error("Error fetching clients:", error);
+    }
+  };
+
+  const handleClientSelect = (clientId: string) => {
+    setSelectedClientId(clientId);
+    if (clientId === "manual") {
+      // Clear all fields for manual entry
+      setBilledTo({
+        name: "",
+        address: "",
+        city: "",
+        state: "",
+        zipCode: "",
+        country: "",
+        email: "",
+        phone: "",
+        taxId: "",
+      });
+      return;
+    }
+
+    const client = clients.find(c => c.id === clientId);
+    if (client) {
+      setBilledTo({
+        name: client.client_name,
+        address: client.address || "",
+        city: client.city || "",
+        state: client.state || "",
+        zipCode: client.zip_code || "",
+        country: client.country || "",
+        email: client.email || "",
+        phone: client.phone || "",
+        taxId: client.tax_id || "",
+      });
     }
   };
 
@@ -395,6 +442,25 @@ export default function InvoiceForm({ editingInvoice, onSuccess, onCancel }: Inv
           <CardTitle>Billed To</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="grid gap-2">
+            <Label htmlFor="selectClient">Select Client</Label>
+            <Select value={selectedClientId} onValueChange={handleClientSelect}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select from existing clients or enter manually" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="manual">⌨️ Enter Manually</SelectItem>
+                {clients
+                  .filter(c => c.status === "active")
+                  .map(client => (
+                    <SelectItem key={client.id} value={client.id!}>
+                      {client.client_name} {client.email ? `(${client.email})` : ""}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="grid gap-2">
               <Label htmlFor="clientName">Client Name *</Label>
