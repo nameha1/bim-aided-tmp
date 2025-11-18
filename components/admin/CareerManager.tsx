@@ -38,6 +38,13 @@ const CareerManager = () => {
     employmentType: "",
     description: "",
     requirements: "",
+    education: "",
+    experience: "",
+    additionalRequirements: "",
+    keyResponsibilities: "",
+    skillExpertise: "",
+    compensation: "",
+    employmentStatus: "",
     salaryRange: "",
     status: "active",
   });
@@ -161,6 +168,13 @@ const CareerManager = () => {
       employmentType: "",
       description: "",
       requirements: "",
+      education: "",
+      experience: "",
+      additionalRequirements: "",
+      keyResponsibilities: "",
+      skillExpertise: "",
+      compensation: "",
+      employmentStatus: "",
       salaryRange: "",
       status: "active",
     });
@@ -179,6 +193,13 @@ const CareerManager = () => {
         employment_type: formData.employmentType,
         description: formData.description,
         requirements: formData.requirements || null,
+        education: formData.education || null,
+        experience: formData.experience || null,
+        additional_requirements: formData.additionalRequirements || null,
+        key_responsibilities: formData.keyResponsibilities || null,
+        skill_expertise: formData.skillExpertise || null,
+        compensation: formData.compensation || null,
+        employment_status: formData.employmentStatus || null,
         salary_range: formData.salaryRange || null,
         status: formData.status,
       } as any;
@@ -226,6 +247,13 @@ const CareerManager = () => {
       employmentType: posting.employment_type,
       description: posting.description,
       requirements: posting.requirements || "",
+      education: posting.education || "",
+      experience: posting.experience || "",
+      additionalRequirements: posting.additional_requirements || "",
+      keyResponsibilities: posting.key_responsibilities || "",
+      skillExpertise: posting.skill_expertise || "",
+      compensation: posting.compensation || "",
+      employmentStatus: posting.employment_status || "",
       salaryRange: posting.salary_range || "",
       status: posting.status || "active",
     });
@@ -376,6 +404,81 @@ const CareerManager = () => {
                   onChange={(e) => setFormData({ ...formData, requirements: e.target.value })}
                   rows={3}
                   placeholder="List key requirements..."
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="education">Education</Label>
+                <Textarea
+                  id="education"
+                  value={formData.education}
+                  onChange={(e) => setFormData({ ...formData, education: e.target.value })}
+                  rows={2}
+                  placeholder="Required education qualifications..."
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="experience">Experience</Label>
+                <Textarea
+                  id="experience"
+                  value={formData.experience}
+                  onChange={(e) => setFormData({ ...formData, experience: e.target.value })}
+                  rows={2}
+                  placeholder="Required years and type of experience..."
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="additionalRequirements">Additional Requirements</Label>
+                <Textarea
+                  id="additionalRequirements"
+                  value={formData.additionalRequirements}
+                  onChange={(e) => setFormData({ ...formData, additionalRequirements: e.target.value })}
+                  rows={2}
+                  placeholder="Any additional requirements..."
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="keyResponsibilities">Key Responsibilities</Label>
+                <Textarea
+                  id="keyResponsibilities"
+                  value={formData.keyResponsibilities}
+                  onChange={(e) => setFormData({ ...formData, keyResponsibilities: e.target.value })}
+                  rows={4}
+                  placeholder="Main job responsibilities..."
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="skillExpertise">Skill & Expertise</Label>
+                <Textarea
+                  id="skillExpertise"
+                  value={formData.skillExpertise}
+                  onChange={(e) => setFormData({ ...formData, skillExpertise: e.target.value })}
+                  rows={3}
+                  placeholder="Required skills and expertise..."
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="compensation">Compensation</Label>
+                <Input
+                  id="compensation"
+                  value={formData.compensation}
+                  onChange={(e) => setFormData({ ...formData, compensation: e.target.value })}
+                  placeholder="e.g., Competitive salary based on experience"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="employmentStatus">Employment Status</Label>
+                <Input
+                  id="employmentStatus"
+                  value={formData.employmentStatus}
+                  onChange={(e) => setFormData({ ...formData, employmentStatus: e.target.value })}
+                  placeholder="e.g., Permanent, Contract, etc."
                 />
               </div>
 
