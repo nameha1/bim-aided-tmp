@@ -106,7 +106,7 @@ const ParallaxHero = () => {
           }}
         >
           {/* Main Title */}
-          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold mb-2 md:mb-3 px-8 sm:px-12 md:px-16 font-[var(--font-roboto)]" style={{ letterSpacing: '0', lineHeight: '1.1' }}>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold mb-2 md:mb-3 px-4 sm:px-12 md:px-16 font-[var(--font-roboto)]" style={{ letterSpacing: '0', lineHeight: '1.1' }}>
             <span className="block mb-1 md:mb-2">
               <span className="typing-wrapper">
                 <span className="typing-text drop-shadow-[0_4px_20px_rgba(0,0,0,0.8)]">

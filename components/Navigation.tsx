@@ -2,12 +2,16 @@ import { useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Menu, X, ChevronDown } from "lucide-react";
+import { Menu, X, ChevronDown, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { useRouter } from "next/navigation";
 
 const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [servicesOpen, setServicesOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const pathname = usePathname();
+  const router = useRouter();
 
   const navLinks = [
     { name: "Home", path: "/" },
@@ -30,6 +34,14 @@ const Navigation = () => {
   ];
 
   const isActive = (path: string) => pathname === path;
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      router.push(`/search?q=${encodeURIComponent(searchQuery)}`);
+      setIsOpen(false);
+    }
+  };
 
   return (
     <nav className="fixed w-full top-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border">
@@ -102,6 +114,17 @@ const Navigation = () => {
                 </Link>
               )
             ))}
+            {/* Search Bar */}
+            <form onSubmit={handleSearch} className="relative">
+              <Input
+                type="search"
+                placeholder="Search..."
+                className="pl-10 pr-4 py-2 text-sm rounded-full border bg-transparent focus:bg-background"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            </form>
           </div>
 
           {/* Mobile Menu Button - Right side on mobile */}
@@ -118,6 +141,18 @@ const Navigation = () => {
         {isOpen && (
           <div className="md:hidden py-4 border-t border-border">
             <div className="flex flex-col gap-4">
+              {/* Mobile Search */}
+              <form onSubmit={handleSearch} className="relative mb-4">
+                <Input
+                  type="search"
+                  placeholder="Search..."
+                  className="pl-10 pr-4 py-2 text-sm rounded-full border"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              </form>
+
               {navLinks.map((link) => (
                 link.hasSubmenu ? (
                   <div key={link.path} className="flex flex-col gap-2">
