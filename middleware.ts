@@ -1,43 +1,36 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-// Define protected routes
-const protectedRoutes = ['/admin', '/employee'];
+// Define public routes that do not require authentication
 const publicRoutes = ['/login', '/'];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  
-  // Allow public routes without authentication
-  const isPublicRoute = publicRoutes.some(route => pathname === route);
+  const token = request.cookies.get('firebase-token')?.value;
+
+  // Check if the current route is public
+  const isPublicRoute = publicRoutes.some(route => {
+    if (route === '/') {
+      return pathname === '/';
+    }
+    return pathname.startsWith(route);
+  });
+
+  // Allow access to public routes
   if (isPublicRoute) {
     return NextResponse.next();
   }
-  
-  // Check if the current path is a protected route
-  const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
-  
-  if (isProtectedRoute) {
-    // Get the authentication token from cookies
-    const token = request.cookies.get('firebase-token')?.value;
-    
-    console.log('[Middleware] Checking protected route:', pathname);
-    console.log('[Middleware] Token exists:', !!token);
-    
-    // If no token exists, redirect to login
-    if (!token) {
-      console.log('[Middleware] No token found, redirecting to login');
-      const loginUrl = new URL('/login', request.url);
-      loginUrl.searchParams.set('redirect', pathname);
-      return NextResponse.redirect(loginUrl);
-    }
-    
-    // Token exists - proceed with request
-    // Note: Detailed token verification happens on the client-side via useAuth hook
-    // and on API routes via server-side verification
-    console.log('[Middleware] Token found, allowing access');
+
+  // For all other routes, check for an authentication token
+  if (!token) {
+    // If no token, redirect to the login page
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('redirect', pathname); // Pass the original path for redirection after login
+    return NextResponse.redirect(loginUrl);
   }
-  
+
+  // If a token exists, allow the request to proceed
+  // Note: The token's validity is checked on the client-side and on API routes.
   return NextResponse.next();
 }
 
@@ -45,12 +38,10 @@ export function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     /*
-     * Match all request paths except:
-     * - api routes (handled separately)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public files (images, etc)
+     * Match all request paths except for:
+     * - API routes (starting with /api)
+     * - Next.js internal files (_next/static, _next/image)
+     * - Favicon and other static assets (e.g., images)
      */
     '/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
