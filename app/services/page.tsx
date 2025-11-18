@@ -74,6 +74,20 @@ export default function Services() {
         "International Project Support",
       ],
     },
+    {
+      icon: Layers,
+      title: "Scan to BIM",
+      description: "Convert laser scans and point clouds into accurate 3D BIM models for renovation, facility management, and more.",
+      link: "/services/scan-to-bim",
+  image: "/images/Scan to BIM.jpeg",
+      features: [
+        "Accurate as-built documentation",
+        "Efficient renovation and retrofit planning",
+        "Facility management and maintenance",
+        "Reduced site visits and manual measurements",
+        "Seamless integration with BIM workflows",
+      ],
+    },
   ];
 
   return (
@@ -143,15 +157,16 @@ export default function Services() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="flex flex-row gap-8 w-full overflow-x-auto min-w-[1600px]">
             {services.map((service, index) => (
-              <Card key={index} className="border-border overflow-hidden group hover:shadow-2xl transition-all duration-300">
+              <Card key={index} className="border-border overflow-hidden group hover:shadow-2xl transition-all duration-300 w-[300px] min-w-[300px] max-w-[300px] h-[420px]">
                 {/* Image Section */}
                 <div className="relative h-64 overflow-hidden">
                   <img 
-                    src={service.image} 
+                    src={service.image.replace(/ /g, '%20')} 
                     alt={service.title}
                     className="w-full h-full object-cover"
+                    onError={e => { e.currentTarget.style.display = 'none'; }}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
                   <div className="absolute bottom-6 left-6">
@@ -258,35 +273,37 @@ export default function Services() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20">
-        <div className="w-full mx-auto px-6 lg:px-12 xl:px-20">
-          <Card className="bg-gradient-to-r from-primary to-primary/90 border-0 text-white mx-auto overflow-hidden relative">
-            {/* Background Pattern */}
-            <div className="absolute inset-0 opacity-10">
-              <div className="absolute inset-0" style={{
-                backgroundImage: `linear-gradient(rgba(255,255,255,.1) 1px, transparent 1px),
-                                 linear-gradient(90deg, rgba(255,255,255,.1) 1px, transparent 1px)`,
-                backgroundSize: '30px 30px'
-              }} />
-            </div>
-            
-            <CardHeader className="text-center py-16 relative z-10">
-              <CardTitle className="text-4xl mb-4 text-white">Ready to Transform Your Project?</CardTitle>
-              <CardDescription className="text-xl text-white/90 mb-8">
-                Let's discuss how our BIM services can bring your vision to life
+      <section className="py-20 px-4 md:px-6 lg:px-8 bg-gradient-to-br from-sky-50 via-blue-50 to-purple-50">
+        <div className="max-w-7xl mx-auto">
+          <div className="glass-card">
+            <CardHeader className="text-center py-12 md:py-14 lg:py-16 px-6 md:px-12 lg:px-16 relative z-10">
+              <CardTitle className="text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold mb-6 text-sky-600 drop-shadow-sm">
+                Ready to Start Your Project?
+              </CardTitle>
+              <CardDescription className="text-lg md:text-xl lg:text-2xl text-gray-700 mb-10 max-w-4xl mx-auto leading-relaxed font-medium">
+                Let's discuss how we can help bring your vision to life with our BIM expertise
               </CardDescription>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Button size="lg" variant="secondary" className="text-lg px-8">
-                  Get Started Today
-                </Button>
+                <Link href="/contact">
+                  <Button 
+                    size="default" 
+                    className="w-full sm:w-44 text-sm md:text-base px-6 py-5 bg-sky-600 hover:bg-sky-700 text-white font-semibold shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 rounded-lg"
+                  >
+                    Get In Touch
+                  </Button>
+                </Link>
                 <Link href="/projects">
-                  <Button size="lg" variant="outline" className="text-lg px-8 border-white/30 text-white hover:bg-white hover:text-primary">
+                  <Button 
+                    size="default" 
+                    variant="outline" 
+                    className="w-full sm:w-44 text-sm md:text-base px-6 py-5 border-2 border-sky-600 text-sky-600 bg-white/50 hover:bg-white/70 font-semibold backdrop-blur-sm transition-all duration-300 rounded-lg hover:shadow-lg hover:scale-105"
+                  >
                     View Our Work
                   </Button>
                 </Link>
               </div>
             </CardHeader>
-          </Card>
+          </div>
         </div>
       </section>
 

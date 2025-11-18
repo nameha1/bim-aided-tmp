@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
-import { Mail, Phone, MapPin, Clock, Send } from "lucide-react";
+import { Mail, Phone, MapPin, Clock, Send, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 
@@ -209,7 +210,6 @@ export default function Contact() {
       
       {/* Hero Section */}
       <section className="relative pt-32 pb-20 overflow-hidden">
-        {/* Background Image with Overlay */}
         <div className="absolute inset-0">
           <img 
             src="/images/contact-hero.jpg" 
@@ -220,96 +220,37 @@ export default function Contact() {
               target.style.display = 'none';
             }}
           />
-          <div className="absolute inset-0 bg-gradient-to-br from-sky-900/90 via-blue-800/85 to-primary/80" />
+          <div className="absolute inset-0 bg-gradient-to-br from-sky-900/85 via-sky-700/75 to-blue-800/80" />
         </div>
         
-        {/* Enhanced Background Pattern */}
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute inset-0" style={{
-            backgroundImage: `
-              linear-gradient(to right, white 1px, transparent 1px),
-              linear-gradient(to bottom, white 1px, transparent 1px)
-            `,
-            backgroundSize: '40px 40px'
-          }} />
-          <div className="absolute inset-0" style={{
-            backgroundImage: `
-              radial-gradient(circle at 20% 50%, white 2px, transparent 2px),
-              radial-gradient(circle at 80% 50%, white 2px, transparent 2px)
-            `,
-            backgroundSize: '60px 60px'
-          }} />
-        </div>
-        
-        <div className="container mx-auto px-4 relative z-10">
-          <div className="max-w-3xl mx-auto text-center">
-            <h1 className="text-5xl font-bold mb-6 text-white">Contact Us</h1>
-            <p className="text-xl text-white/90">
-              Get in touch with our team. We're here to help with your BIM needs.
+        <div className="container mx-auto px-4 relative">
+          <div className="max-w-5xl mx-auto text-center">
+            <Badge className="mb-6 px-4 py-2 text-sm" variant="secondary">
+              Get In Touch
+            </Badge>
+            
+            <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold mb-6 text-white">
+              Contact Us
+            </h1>
+            
+            <p className="text-xl md:text-2xl text-white/90 mb-8 max-w-3xl mx-auto leading-relaxed">
+              Ready to transform your project with cutting-edge BIM solutions? Our team of experts is here to help bring your vision to life. Reach out to discuss how we can deliver exceptional results tailored to your needs.
             </p>
-          </div>
-        </div>
-      </section>
 
-      {/* Contact Information Cards */}
-      <section className="py-12 bg-secondary/30">
-        <div className="container mx-auto px-4">
-          <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <Card className="p-6 text-center hover:shadow-lg transition-shadow">
-              <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center">
-                <Mail className="text-primary" size={24} />
-              </div>
-              <h3 className="font-semibold mb-2">Email Us</h3>
-              <div className="text-sm text-muted-foreground space-y-1">
-                <a 
-                  href="mailto:info@bimaided.com" 
-                  className="block hover:text-primary transition-colors"
-                >
-                  info@bimaided.com
-                </a>
-                <a 
-                  href="mailto:info.bimaided@gmail.com" 
-                  className="block hover:text-primary transition-colors"
-                >
-                  info.bimaided@gmail.com
-                </a>
-              </div>
-            </Card>
-
-            <Card className="p-6 text-center hover:shadow-lg transition-shadow">
-              <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center">
-                <Phone className="text-primary" size={24} />
-              </div>
-              <h3 className="font-semibold mb-2">Call Us</h3>
-              <div className="text-sm text-muted-foreground space-y-1">
-                <p>+880 1308-230988</p>
-                <p>+880 1672-843230</p>
-                <p>+880 1737-727342</p>
-              </div>
-            </Card>
-
-            <Card className="p-6 text-center hover:shadow-lg transition-shadow">
-              <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center">
-                <MapPin className="text-primary" size={24} />
-              </div>
-              <h3 className="font-semibold mb-2">Visit Us</h3>
-              <p className="text-sm text-muted-foreground">
-                House 7, Level 1, Road 1/B,<br />
-                Nikunjo-2, Dhaka-1229,<br />
-                Bangladesh
-              </p>
-            </Card>
-
-            <Card className="p-6 text-center hover:shadow-lg transition-shadow">
-              <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center">
-                <Clock className="text-primary" size={24} />
-              </div>
-              <h3 className="font-semibold mb-2">Working Hours</h3>
-              <p className="text-sm text-muted-foreground">
-                Saturday - Thursday<br />
-                8:00 AM - 9:00 PM
-              </p>
-            </Card>
+            {/* Quick Stats */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-4xl mx-auto">
+              {[
+                { value: "200+", label: "Projects Completed" },
+                { value: "20+", label: "Expert Team Members" },
+                { value: "10+", label: "Years Experience" },
+                { value: "98%", label: "Client Satisfaction" },
+              ].map((stat, index) => (
+                <div key={index} className="p-4 rounded-xl bg-white/10 backdrop-blur-md border border-white/20">
+                  <div className="text-3xl font-bold text-white mb-1">{stat.value}</div>
+                  <div className="text-sm text-white/80">{stat.label}</div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>

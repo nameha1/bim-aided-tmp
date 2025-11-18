@@ -73,6 +73,7 @@ const AddEmployeeForm = ({ onSuccess }: AddEmployeeFormProps) => {
     emergencyPersonName: "",
     emergencyPersonContact: "",
     emergencyPersonAddress: "",
+    canViewFinancials: false,
   });
 
   useEffect(() => {
@@ -435,6 +436,7 @@ const AddEmployeeForm = ({ onSuccess }: AddEmployeeFormProps) => {
         emergencyPersonName: formData.emergencyPersonName || null,
         emergencyPersonContact: formData.emergencyPersonContact || null,
         emergencyPersonAddress: formData.emergencyPersonAddress || null,
+        canViewFinancials: formData.canViewFinancials || false,
         profileImageUrl: profileImageUrl || null,
         documentUrls: documentUrls,
       };
@@ -501,6 +503,7 @@ const AddEmployeeForm = ({ onSuccess }: AddEmployeeFormProps) => {
         emergencyPersonName: "",
         emergencyPersonContact: "",
         emergencyPersonAddress: "",
+        canViewFinancials: false,
       });
       setProfileImage(null);
       setProfileImagePreview("");
@@ -858,6 +861,21 @@ const AddEmployeeForm = ({ onSuccess }: AddEmployeeFormProps) => {
       {/* Financial Information */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold border-b pb-2">Financial Information</h3>
+        
+        {/* Financial Visibility Toggle */}
+        <div className="flex items-center gap-3 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+          <input
+            type="checkbox"
+            id="canViewFinancials"
+            checked={formData.canViewFinancials}
+            onChange={(e) => setFormData({ ...formData, canViewFinancials: e.target.checked })}
+            className="h-4 w-4"
+          />
+          <Label htmlFor="canViewFinancials" className="text-sm font-medium cursor-pointer flex-1">
+            Allow employee to view their financial information (salary, payroll, deductions)
+          </Label>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="grossSalary">Gross Salary</Label>

@@ -88,6 +88,13 @@ export default function Landing() {
       image: "/images/bim-services/Global BIM.jpeg",
       href: "/services/global-bim"
     },
+    {
+      icon: Layers,
+      title: "Scan to BIM",
+      description: "Convert laser scans and point clouds into accurate 3D BIM models for renovation, facility management, and more.",
+  image: "/images/Scan to BIM.jpeg",
+      href: "/services/scan-to-bim"
+    },
   ];
 
   const stats = [
@@ -370,7 +377,7 @@ export default function Landing() {
       </Suspense>
 
       {/* Stats Section */}
-      <section className="py-16 bg-secondary">
+  <section className="py-8 bg-secondary">
         <div className="w-full mx-auto px-6 lg:px-12 xl:px-20">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {stats.map((stat, index) => (

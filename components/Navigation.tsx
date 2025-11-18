@@ -18,7 +18,7 @@ const Navigation = () => {
       submenu: [
         { name: "BIM Modeling", path: "/services/bim-modeling", description: "3D modeling for Architecture, Structure & MEP" },
         { name: "Advanced BIM", path: "/services/advanced-bim", description: "Clash detection & 4D/5D simulation" },
-        { name: "Scan-to-BIM", path: "/services/advanced-bim#scan-to-bim", description: "Laser scanning to BIM conversion" },
+        { name: "Scan to BIM", path: "/services/scan-to-bim", description: "Laser scanning to BIM conversion" },
         { name: "VDC Services", path: "/services/vdc-services", description: "Virtual design & construction planning" },
         { name: "Global BIM", path: "/services/global-bim", description: "International BIM coordination" },
       ]
@@ -40,7 +40,7 @@ const Navigation = () => {
             <img 
               src="/Logo-BIMaided.png" 
               alt="BIM aided Logo" 
-              className="h-14 md:h-16 w-auto object-contain"
+              className="h-10 md:h-12 w-auto object-contain"
             />
           </Link>
 

@@ -14,7 +14,7 @@ import {
   MapPin
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
 // Lazy load heavy components
@@ -158,10 +158,10 @@ export default function GlobalBIMServices() {
             {/* Quick Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-4xl mx-auto">
               {[
-                { value: "10+", label: "Countries Served" },
-                { value: "800+", label: "Global Projects" },
-                { value: "50+", label: "BIM Experts" },
-                { value: "24/7", label: "Support Available" },
+                { value: "200+", label: "Projects Completed" },
+                { value: "20+", label: "Expert Team Members" },
+                { value: "10+", label: "Years Experience" },
+                { value: "98%", label: "Client Satisfaction" },
               ].map((stat, index) => (
                 <div key={index} className="p-4 rounded-xl bg-white/10 backdrop-blur-md border border-white/20">
                   <div className="text-3xl font-bold text-white mb-1">{stat.value}</div>
@@ -301,33 +301,36 @@ export default function GlobalBIMServices() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 bg-gradient-to-r from-cyan-500 via-cyan-600 to-cyan-500 text-white relative overflow-hidden">
-        <div className="absolute inset-0 bg-grid-pattern opacity-10" />
-        <div className="container mx-auto px-4 text-center relative z-10">
-          <div className="max-w-4xl mx-auto">
-            <h2 className="text-3xl md:text-4xl font-bold mb-6">
-              Ready to bring world-class BIM expertise to your next project?
-            </h2>
-            <p className="text-xl mb-4 text-cyan-50 leading-relaxed">
-              Whether you're planning a mega-development in the Middle East, a sustainable building in Scandinavia, or infrastructure in North America, our global team is ready to support your vision with cutting-edge BIM services.
-            </p>
-            <p className="text-lg mb-8 text-cyan-100 leading-relaxed">
-              Get in touch with us today—let's build the future of smart construction together, no matter where in the world your project is located.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link href="/contact">
-                <Button size="lg" variant="outline" className="bg-white text-cyan-600 hover:bg-gray-100 border-0 hover:scale-105 transition-transform">
-                  Contact Us
-                  <ArrowRight className="ml-2" size={18} />
-                </Button>
-              </Link>
-              <Link href="/contact">
-                <Button size="lg" className="bg-cyan-700 hover:bg-cyan-800 text-white hover:scale-105 transition-transform">
-                  Get a Quote
-                  <ArrowRight className="ml-2" size={18} />
-                </Button>
-              </Link>
-            </div>
+      <section className="py-20 px-4 md:px-6 lg:px-8 bg-gradient-to-br from-sky-50 via-blue-50 to-purple-50">
+        <div className="max-w-7xl mx-auto">
+          <div className="glass-card">
+            <CardHeader className="text-center py-12 md:py-14 lg:py-16 px-6 md:px-12 lg:px-16 relative z-10">
+              <CardTitle className="text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold mb-6 text-sky-600 drop-shadow-sm">
+                Ready to Start Your Project?
+              </CardTitle>
+              <CardDescription className="text-lg md:text-xl lg:text-2xl text-gray-700 mb-10 max-w-4xl mx-auto leading-relaxed font-medium">
+                Let's discuss how we can help bring your vision to life with our BIM expertise
+              </CardDescription>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Link href="/contact">
+                  <Button 
+                    size="default" 
+                    className="w-full sm:w-44 text-sm md:text-base px-6 py-5 bg-sky-600 hover:bg-sky-700 text-white font-semibold shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 rounded-lg"
+                  >
+                    Get In Touch
+                  </Button>
+                </Link>
+                <Link href="/projects">
+                  <Button 
+                    size="default" 
+                    variant="outline" 
+                    className="w-full sm:w-44 text-sm md:text-base px-6 py-5 border-2 border-sky-600 text-sky-600 bg-white/50 hover:bg-white/70 font-semibold backdrop-blur-sm transition-all duration-300 rounded-lg hover:shadow-lg hover:scale-105"
+                  >
+                    View Our Work
+                  </Button>
+                </Link>
+              </div>
+            </CardHeader>
           </div>
         </div>
       </section>

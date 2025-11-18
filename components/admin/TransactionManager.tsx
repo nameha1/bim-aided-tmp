@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, TrendingUp, TrendingDown, Calendar, DollarSign, Trash2, Edit, Download, Filter } from "lucide-react";
+import { Plus, TrendingUp, TrendingDown, Calendar, DollarSign, Trash2, Edit, Download, Filter, X } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -53,7 +53,7 @@ interface ClientWork {
   project_name: string;
 }
 
-const EXPENSE_CATEGORIES = [
+const DEFAULT_EXPENSE_CATEGORIES = [
   "Software Licenses",
   "Salaries",
   "Hardware",
@@ -64,7 +64,7 @@ const EXPENSE_CATEGORIES = [
   "Other"
 ];
 
-const INCOME_CATEGORIES = [
+const DEFAULT_INCOME_CATEGORIES = [
   "Project Revenue",
   "Consultation",
   "Maintenance",
@@ -80,6 +80,16 @@ export const TransactionManager = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+
+  // Category states
+  const [expenseCategories, setExpenseCategories] = useState<string[]>(DEFAULT_EXPENSE_CATEGORIES);
+  const [incomeCategories, setIncomeCategories] = useState<string[]>(DEFAULT_INCOME_CATEGORIES);
+  const [showNewCategory, setShowNewCategory] = useState(false);
+  const [newCategoryInput, setNewCategoryInput] = useState("");
+
+  // Client states
+  const [useManualClient, setUseManualClient] = useState(false);
+  const [manualClientName, setManualClientName] = useState("");
 
   // Form state
   const [transactionDate, setTransactionDate] = useState("");
@@ -99,7 +109,78 @@ export const TransactionManager = () => {
   useEffect(() => {
     fetchTransactions();
     fetchClientWorks();
+    loadCustomCategories();
   }, []);
+
+  const loadCustomCategories = async () => {
+    try {
+      const { data: customExpense } = await getDocuments("custom_expense_categories");
+      const { data: customIncome } = await getDocuments("custom_income_categories");
+
+      if (customExpense && customExpense.length > 0) {
+        const expenseNames = customExpense.map((c: any) => c.name).filter((name: string) => !DEFAULT_EXPENSE_CATEGORIES.includes(name));
+        setExpenseCategories([...DEFAULT_EXPENSE_CATEGORIES, ...expenseNames]);
+      }
+
+      if (customIncome && customIncome.length > 0) {
+        const incomeNames = customIncome.map((c: any) => c.name).filter((name: string) => !DEFAULT_INCOME_CATEGORIES.includes(name));
+        setIncomeCategories([...DEFAULT_INCOME_CATEGORIES, ...incomeNames]);
+      }
+    } catch (error) {
+      console.error("Error loading custom categories:", error);
+    }
+  };
+
+  const addNewCategory = async () => {
+    if (!newCategoryInput.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a category name",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const currentCategories = transactionType === "income" ? incomeCategories : expenseCategories;
+    
+    if (currentCategories.includes(newCategoryInput.trim())) {
+      toast({
+        title: "Error",
+        description: "This category already exists",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const collectionName = transactionType === "income" ? "custom_income_categories" : "custom_expense_categories";
+      await createDocument(collectionName, {
+        name: newCategoryInput.trim(),
+        created_at: new Date().toISOString(),
+      });
+
+      if (transactionType === "income") {
+        setIncomeCategories([...incomeCategories, newCategoryInput.trim()]);
+      } else {
+        setExpenseCategories([...expenseCategories, newCategoryInput.trim()]);
+      }
+
+      setCategory(newCategoryInput.trim());
+      setNewCategoryInput("");
+      setShowNewCategory(false);
+
+      toast({
+        title: "Success",
+        description: `Category "${newCategoryInput.trim()}" added successfully`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add category",
+        variant: "destructive",
+      });
+    }
+  };
 
   const fetchTransactions = async () => {
     try {
@@ -161,6 +242,8 @@ export const TransactionManager = () => {
     setTransactionType("expense");
     setAmount("");
     setClientWorkId("");
+    setUseManualClient(false);
+    setManualClientName("");
     setCategory("");
     setNotes("");
     setEditingTransaction(null);
@@ -177,6 +260,8 @@ export const TransactionManager = () => {
     setTransactionType(transaction.transaction_type);
     setAmount(transaction.amount.toString());
     setClientWorkId(transaction.client_work_id || "");
+    setUseManualClient(false);
+    setManualClientName("");
     setCategory(transaction.category);
     setNotes(transaction.notes || "");
     setDialogOpen(true);
@@ -212,6 +297,12 @@ export const TransactionManager = () => {
     }
 
     try {
+      // Prepare notes with manual client name if applicable
+      let finalNotes = notes || "";
+      if (useManualClient && manualClientName.trim()) {
+        finalNotes = `Client: ${manualClientName.trim()}\n${finalNotes}`.trim();
+      }
+
       const transactionData = {
         transaction_date: transactionDate,
         transaction_type: transactionType,
@@ -219,7 +310,7 @@ export const TransactionManager = () => {
         currency: "BDT",
         client_work_id: clientWorkId && clientWorkId !== "none" ? clientWorkId : null,
         category,
-        notes: notes || null,
+        notes: finalNotes || null,
       };
 
       console.log("Submitting transaction data:", transactionData);
@@ -424,7 +515,7 @@ export const TransactionManager = () => {
     });
   };
 
-  const categories = transactionType === "income" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+  const categories = transactionType === "income" ? incomeCategories : expenseCategories;
 
   if (loading) {
     return <div className="flex justify-center items-center h-64">Loading...</div>;
@@ -753,38 +844,99 @@ export const TransactionManager = () => {
                   required
                 />
               </div>
-              <div>
+              <div className="space-y-2">
                 <Label htmlFor="category">Category *</Label>
-                <Select value={category || undefined} onValueChange={setCategory} required>
+                <div className="flex gap-2">
+                  <Select value={category || undefined} onValueChange={setCategory} required>
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map((cat) => (
+                        <SelectItem key={cat} value={cat}>
+                          {cat}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setShowNewCategory(!showNewCategory)}
+                  >
+                    <Plus size={16} />
+                  </Button>
+                </div>
+                {showNewCategory && (
+                  <div className="flex gap-2 mt-2">
+                    <Input
+                      placeholder="New category name"
+                      value={newCategoryInput}
+                      onChange={(e) => setNewCategoryInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          addNewCategory();
+                        }
+                      }}
+                    />
+                    <Button type="button" onClick={addNewCategory} size="sm">Add</Button>
+                    <Button type="button" onClick={() => {
+                      setShowNewCategory(false);
+                      setNewCategoryInput("");
+                    }} variant="ghost" size="sm">
+                      <X size={16} />
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="clientWork">Client Project (Optional)</Label>
+              <div className="flex items-center gap-2 mb-2">
+                <input
+                  type="checkbox"
+                  id="useManualClient"
+                  checked={useManualClient}
+                  onChange={(e) => {
+                    setUseManualClient(e.target.checked);
+                    if (e.target.checked) {
+                      setClientWorkId("");
+                    } else {
+                      setManualClientName("");
+                    }
+                  }}
+                  className="h-4 w-4"
+                />
+                <Label htmlFor="useManualClient" className="text-sm font-normal cursor-pointer">
+                  Enter client name manually (not linked to project)
+                </Label>
+              </div>
+              
+              {useManualClient ? (
+                <Input
+                  id="manualClientName"
+                  placeholder="Enter client name..."
+                  value={manualClientName}
+                  onChange={(e) => setManualClientName(e.target.value)}
+                />
+              ) : (
+                <Select value={clientWorkId || undefined} onValueChange={(value) => setClientWorkId(value)}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select category" />
+                    <SelectValue placeholder="Select client project (optional)" />
                   </SelectTrigger>
                   <SelectContent>
-                    {categories.map((cat) => (
-                      <SelectItem key={cat} value={cat}>
-                        {cat}
+                    <SelectItem value="none">No Project</SelectItem>
+                    {clientWorks.map((work) => (
+                      <SelectItem key={work.id} value={work.id}>
+                        {work.project_name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-            </div>
-
-            <div>
-              <Label htmlFor="clientWork">Client Project (Optional)</Label>
-              <Select value={clientWorkId || undefined} onValueChange={(value) => setClientWorkId(value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select client project (optional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">No Project</SelectItem>
-                  {clientWorks.map((work) => (
-                    <SelectItem key={work.id} value={work.id}>
-                      {work.project_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              )}
             </div>
 
             <div>

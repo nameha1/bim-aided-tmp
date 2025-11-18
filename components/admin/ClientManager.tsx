@@ -38,7 +38,8 @@ import {
   Briefcase,
   Calendar,
   DollarSign,
-  FileText
+  FileText,
+  X
 } from "lucide-react";
 import {
   AlertDialog,
@@ -60,7 +61,7 @@ import {
 } from "@/components/ui/table";
 import { Client, ClientWork } from "@/types/client";
 
-const INDUSTRIES = [
+const DEFAULT_INDUSTRIES = [
   "Architecture",
   "Construction",
   "Engineering",
@@ -74,7 +75,7 @@ const INDUSTRIES = [
   "Other"
 ];
 
-const PROJECT_TYPES = [
+const DEFAULT_PROJECT_TYPES = [
   "BIM Modeling",
   "Architectural Design",
   "Structural Engineering",
@@ -95,6 +96,14 @@ export default function ClientManager() {
   const [clientWorks, setClientWorks] = useState<ClientWork[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  
+  // Custom options
+  const [industries, setIndustries] = useState<string[]>(DEFAULT_INDUSTRIES);
+  const [projectTypes, setProjectTypes] = useState<string[]>(DEFAULT_PROJECT_TYPES);
+  const [showNewIndustry, setShowNewIndustry] = useState(false);
+  const [showNewProjectType, setShowNewProjectType] = useState(false);
+  const [newIndustryInput, setNewIndustryInput] = useState("");
+  const [newProjectTypeInput, setNewProjectTypeInput] = useState("");
   
   // Dialog states
   const [clientDialogOpen, setClientDialogOpen] = useState(false);
@@ -142,7 +151,113 @@ export default function ClientManager() {
     fetchClients();
     fetchClientWorks();
     fetchEmployees();
+    loadCustomOptions();
   }, []);
+
+  const loadCustomOptions = async () => {
+    try {
+      const { data: customIndustries } = await getDocuments("custom_industries");
+      const { data: customProjectTypes } = await getDocuments("custom_project_types");
+
+      if (customIndustries && customIndustries.length > 0) {
+        const industryNames = customIndustries.map((i: any) => i.name).filter((name: string) => !DEFAULT_INDUSTRIES.includes(name));
+        setIndustries([...DEFAULT_INDUSTRIES, ...industryNames]);
+      }
+
+      if (customProjectTypes && customProjectTypes.length > 0) {
+        const typeNames = customProjectTypes.map((t: any) => t.name).filter((name: string) => !DEFAULT_PROJECT_TYPES.includes(name));
+        setProjectTypes([...DEFAULT_PROJECT_TYPES, ...typeNames]);
+      }
+    } catch (error) {
+      console.error("Error loading custom options:", error);
+    }
+  };
+
+  const addNewIndustry = async () => {
+    if (!newIndustryInput.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter an industry name",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (industries.includes(newIndustryInput.trim())) {
+      toast({
+        title: "Error",
+        description: "This industry already exists",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await createDocument("custom_industries", {
+        name: newIndustryInput.trim(),
+        created_at: new Date().toISOString(),
+      });
+
+      setIndustries([...industries, newIndustryInput.trim()]);
+      setIndustry(newIndustryInput.trim());
+      setNewIndustryInput("");
+      setShowNewIndustry(false);
+
+      toast({
+        title: "Success",
+        description: `Industry "${newIndustryInput.trim()}" added successfully`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add industry",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const addNewProjectType = async () => {
+    if (!newProjectTypeInput.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a project type",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (projectTypes.includes(newProjectTypeInput.trim())) {
+      toast({
+        title: "Error",
+        description: "This project type already exists",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await createDocument("custom_project_types", {
+        name: newProjectTypeInput.trim(),
+        created_at: new Date().toISOString(),
+      });
+
+      setProjectTypes([...projectTypes, newProjectTypeInput.trim()]);
+      setProjectType(newProjectTypeInput.trim());
+      setNewProjectTypeInput("");
+      setShowNewProjectType(false);
+
+      toast({
+        title: "Success",
+        description: `Project type "${newProjectTypeInput.trim()}" added successfully`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add project type",
+        variant: "destructive",
+      });
+    }
+  };
 
   const fetchClients = async () => {
     try {
@@ -965,18 +1080,50 @@ export default function ClientManager() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="industry">Industry</Label>
-                <Select value={industry} onValueChange={setIndustry}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select industry" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {INDUSTRIES.map((ind) => (
-                      <SelectItem key={ind} value={ind}>
-                        {ind}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="flex gap-2">
+                  <Select value={industry} onValueChange={setIndustry}>
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Select industry" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {industries.map((ind) => (
+                        <SelectItem key={ind} value={ind}>
+                          {ind}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setShowNewIndustry(!showNewIndustry)}
+                  >
+                    <Plus size={16} />
+                  </Button>
+                </div>
+                {showNewIndustry && (
+                  <div className="flex gap-2 mt-2">
+                    <Input
+                      placeholder="New industry name"
+                      value={newIndustryInput}
+                      onChange={(e) => setNewIndustryInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          addNewIndustry();
+                        }
+                      }}
+                    />
+                    <Button type="button" onClick={addNewIndustry} size="sm">Add</Button>
+                    <Button type="button" onClick={() => {
+                      setShowNewIndustry(false);
+                      setNewIndustryInput("");
+                    }} variant="ghost" size="sm">
+                      <X size={16} />
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1079,18 +1226,50 @@ export default function ClientManager() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="projectType">Project Type</Label>
-                <Select value={projectType} onValueChange={setProjectType}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PROJECT_TYPES.map((type) => (
-                      <SelectItem key={type} value={type}>
-                        {type}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="flex gap-2">
+                  <Select value={projectType} onValueChange={setProjectType}>
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {projectTypes.map((type) => (
+                        <SelectItem key={type} value={type}>
+                          {type}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setShowNewProjectType(!showNewProjectType)}
+                  >
+                    <Plus size={16} />
+                  </Button>
+                </div>
+                {showNewProjectType && (
+                  <div className="flex gap-2 mt-2">
+                    <Input
+                      placeholder="New project type"
+                      value={newProjectTypeInput}
+                      onChange={(e) => setNewProjectTypeInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          addNewProjectType();
+                        }
+                      }}
+                    />
+                    <Button type="button" onClick={addNewProjectType} size="sm">Add</Button>
+                    <Button type="button" onClick={() => {
+                      setShowNewProjectType(false);
+                      setNewProjectTypeInput("");
+                    }} variant="ghost" size="sm">
+                      <X size={16} />
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
 

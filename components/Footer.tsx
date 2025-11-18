@@ -5,7 +5,7 @@ const Footer = () => {
 	return (
 		<footer
 			aria-labelledby="footer-heading"
-			className="relative mt-20 bg-white text-gray-800 border-t border-gray-200"
+			className="relative mt-20 bg-blue-50/50 text-gray-800 border-t border-blue-100"
 		>
 			<div className="relative z-10 w-full mx-auto px-6 lg:px-12 xl:px-20 py-8">
 				<h2 id="footer-heading" className="sr-only">
@@ -72,22 +72,21 @@ const Footer = () => {
 
 					<div className="md:max-w-[220px] mt-6 md:mt-0">
 						<h3 className="font-semibold text-lg mb-4 text-gray-900">Contact</h3>
-						<div className="space-y-3 text-base text-gray-600">
+						<div className="space-y-2 text-base text-gray-600">
 							<div className="flex items-center gap-2">
 								<Mail size={16} className="text-gray-500 flex-shrink-0" />
 								<a href="mailto:info@bimaided.com" className="hover:text-sky-600">
 									info@bimaided.com
 								</a>
 							</div>
-							<div className="flex items-start gap-2">
-								<Phone size={16} className="text-gray-500 mt-1 flex-shrink-0" />
-								<div>+880 1308-230988, +880 1672-843230</div>
+							<div className="flex items-center gap-2">
+								<Phone size={16} className="text-gray-500 flex-shrink-0" />
+								<div className="text-sm leading-snug">+880 1308-230988, +880 1672-843230</div>
 							</div>
 							<div className="flex items-start gap-2">
-								<MapPin size={16} className="text-gray-500 mt-1 flex-shrink-0" />
-								<div>
-									<div>House 7, Level 1, Road 1/B, Nikunjo-2,</div>
-									<div>Dhaka-1229, Bangladesh</div>
+								<MapPin size={16} className="text-gray-500 mt-0.5 flex-shrink-0" />
+								<div className="text-sm leading-snug">
+									House 7, Level 1, Road 1/B, Nikunjo-2, Dhaka-1229, Bangladesh
 								</div>
 							</div>
 							

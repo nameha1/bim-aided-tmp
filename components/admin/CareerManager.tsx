@@ -9,8 +9,15 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { getDocuments, createDocument, updateDocument, deleteDocument } from "@/lib/firebase/firestore";
 import { orderBy } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+
+const DEFAULT_EMPLOYMENT_TYPES = [
+  { value: "full_time", label: "Full-time" },
+  { value: "part_time", label: "Part-time" },
+  { value: "contract", label: "Contract" },
+  { value: "internship", label: "Internship" },
+];
 
 const CareerManager = () => {
   const [postings, setPostings] = useState<any[]>([]);
@@ -19,6 +26,10 @@ const CareerManager = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingPosting, setEditingPosting] = useState<any>(null);
   const { toast } = useToast();
+
+  const [employmentTypes, setEmploymentTypes] = useState(DEFAULT_EMPLOYMENT_TYPES);
+  const [showNewEmploymentType, setShowNewEmploymentType] = useState(false);
+  const [newEmploymentTypeInput, setNewEmploymentTypeInput] = useState("");
 
   const [formData, setFormData] = useState({
     title: "",
@@ -34,7 +45,76 @@ const CareerManager = () => {
   useEffect(() => {
     fetchPostings();
     fetchDepartments();
+    loadCustomEmploymentTypes();
   }, []);
+
+  const loadCustomEmploymentTypes = async () => {
+    try {
+      const { data: customTypes } = await getDocuments("custom_employment_types");
+
+      if (customTypes && customTypes.length > 0) {
+        const typeObjects = customTypes.map((t: any) => ({
+          value: t.value,
+          label: t.label
+        })).filter((type: any) => 
+          !DEFAULT_EMPLOYMENT_TYPES.some(def => def.value === type.value)
+        );
+        setEmploymentTypes([...DEFAULT_EMPLOYMENT_TYPES, ...typeObjects]);
+      }
+    } catch (error) {
+      console.error("Error loading custom employment types:", error);
+    }
+  };
+
+  const addNewEmploymentType = async () => {
+    if (!newEmploymentTypeInput.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter an employment type",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const newValue = newEmploymentTypeInput.trim().toLowerCase().replace(/\s+/g, '_');
+    
+    if (employmentTypes.some(type => type.value === newValue)) {
+      toast({
+        title: "Error",
+        description: "This employment type already exists",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const newType = {
+        value: newValue,
+        label: newEmploymentTypeInput.trim()
+      };
+
+      await createDocument("custom_employment_types", {
+        ...newType,
+        created_at: new Date().toISOString(),
+      });
+
+      setEmploymentTypes([...employmentTypes, newType]);
+      setFormData({ ...formData, employmentType: newValue });
+      setNewEmploymentTypeInput("");
+      setShowNewEmploymentType(false);
+
+      toast({
+        title: "Success",
+        description: `Employment type "${newType.label}" added successfully`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add employment type",
+        variant: "destructive",
+      });
+    }
+  };
 
   const fetchPostings = async () => {
     try {
@@ -231,17 +311,50 @@ const CareerManager = () => {
 
               <div className="space-y-2">
                 <Label htmlFor="employmentType">Employment Type*</Label>
-                <Select value={formData.employmentType} onValueChange={(value) => setFormData({ ...formData, employmentType: value })} required>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="full_time">Full-time</SelectItem>
-                    <SelectItem value="part_time">Part-time</SelectItem>
-                    <SelectItem value="contract">Contract</SelectItem>
-                    <SelectItem value="internship">Internship</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex gap-2">
+                  <Select value={formData.employmentType} onValueChange={(value) => setFormData({ ...formData, employmentType: value })} required>
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {employmentTypes.map((type) => (
+                        <SelectItem key={type.value} value={type.value}>
+                          {type.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setShowNewEmploymentType(!showNewEmploymentType)}
+                  >
+                    <Plus size={16} />
+                  </Button>
+                </div>
+                {showNewEmploymentType && (
+                  <div className="flex gap-2 mt-2">
+                    <Input
+                      placeholder="New employment type (e.g., Remote, Freelance)"
+                      value={newEmploymentTypeInput}
+                      onChange={(e) => setNewEmploymentTypeInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          addNewEmploymentType();
+                        }
+                      }}
+                    />
+                    <Button type="button" onClick={addNewEmploymentType} size="sm">Add</Button>
+                    <Button type="button" onClick={() => {
+                      setShowNewEmploymentType(false);
+                      setNewEmploymentTypeInput("");
+                    }} variant="ghost" size="sm">
+                      <X size={16} />
+                    </Button>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2">

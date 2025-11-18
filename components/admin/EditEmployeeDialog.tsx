@@ -4,11 +4,30 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { getDocuments } from "@/lib/firebase/firestore";
+import { Checkbox } from "@/components/ui/checkbox";
+import { getDocuments, createDocument } from "@/lib/firebase/firestore";
 import { where } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Upload, X, FileText, Download, ExternalLink } from "lucide-react";
+import { Loader2, Upload, X, FileText, Download, ExternalLink, Plus } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+
+const DEFAULT_DEPARTMENTS = [
+  "Executive & Management Level",
+  "Technical & Production Divisions",
+  "Support & Innovation Divisions",
+  "Business & Administrative Division"
+];
+
+const DEFAULT_DESIGNATIONS = [
+  "BIM Modeler",
+  "Sr. BIM Modeler",
+  "BIM Engineer",
+  "Sr. BIM Engineer",
+  "BIM Coordinator",
+  "Sr. BIM Coordinator",
+  "BIM Manager",
+  "Admin"
+];
 
 interface Employee {
   id: string;
@@ -41,6 +60,7 @@ interface Employee {
   profile_picture?: string | null;
   document_urls?: string[] | null;
   documentUrls?: string[] | null;
+  can_view_financials?: boolean | null;
 }
 
 interface EditEmployeeDialogProps {
@@ -60,6 +80,10 @@ const EditEmployeeDialog = ({ employee, open, onOpenChange, onSuccess }: EditEmp
   const [uploadingImage, setUploadingImage] = useState(false);
   const [existingDocuments, setExistingDocuments] = useState<string[]>([]);
   const [newDocuments, setNewDocuments] = useState<File[]>([]);
+  const [showNewDepartment, setShowNewDepartment] = useState(false);
+  const [showNewDesignation, setShowNewDesignation] = useState(false);
+  const [newDepartmentInput, setNewDepartmentInput] = useState("");
+  const [newDesignationInput, setNewDesignationInput] = useState("");
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -87,6 +111,7 @@ const EditEmployeeDialog = ({ employee, open, onOpenChange, onSuccess }: EditEmp
     emergencyPersonName: "",
     emergencyPersonContact: "",
     emergencyPersonAddress: "",
+    canViewFinancials: false,
   });
 
   useEffect(() => {
@@ -122,6 +147,7 @@ const EditEmployeeDialog = ({ employee, open, onOpenChange, onSuccess }: EditEmp
         emergencyPersonName: employee.emergency_person_name || "",
         emergencyPersonContact: employee.emergency_person_contact || "",
         emergencyPersonAddress: employee.emergency_person_address || "",
+        canViewFinancials: employee.can_view_financials || false,
       });
       setProfileImagePreview(employee.profileImageUrl || employee.profile_picture || "");
       setProfileImage(null);
@@ -149,14 +175,6 @@ const EditEmployeeDialog = ({ employee, open, onOpenChange, onSuccess }: EditEmp
 
   const fetchDepartments = async () => {
     try {
-      // Default departments (matching AddEmployeeForm)
-      const DEFAULT_DEPARTMENTS = [
-        "Executive & Management Level",
-        "Technical & Production Divisions",
-        "Support & Innovation Divisions",
-        "Business & Administrative Division"
-      ];
-
       // Load custom departments from Firestore (matching AddEmployeeForm)
       const { data: customDepts, error } = await getDocuments("custom_departments");
       if (error) throw error;
@@ -187,18 +205,6 @@ const EditEmployeeDialog = ({ employee, open, onOpenChange, onSuccess }: EditEmp
 
   const fetchDesignations = async () => {
     try {
-      // Default designations (matching AddEmployeeForm)
-      const DEFAULT_DESIGNATIONS = [
-        "BIM Modeler",
-        "Sr. BIM Modeler",
-        "BIM Engineer",
-        "Sr. BIM Engineer",
-        "BIM Coordinator",
-        "Sr. BIM Coordinator",
-        "BIM Manager",
-        "Admin"
-      ];
-
       // Load custom designations from Firestore (matching AddEmployeeForm)
       const { data: customDesigs, error } = await getDocuments("custom_designations");
       if (error) throw error;
@@ -224,6 +230,93 @@ const EditEmployeeDialog = ({ employee, open, onOpenChange, onSuccess }: EditEmp
     } catch (error) {
       console.error("Error fetching designations:", error);
       setDesignations([]);
+    }
+  };
+
+  const addNewDepartment = async () => {
+    if (!newDepartmentInput.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a department name",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (departments.some(d => d.name === newDepartmentInput.trim())) {
+      toast({
+        title: "Error",
+        description: "This department already exists",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const result = await createDocument("custom_departments", {
+        name: newDepartmentInput.trim(),
+        created_at: new Date().toISOString(),
+      });
+
+      setDepartments([...departments, { id: result.data || `custom-${Date.now()}`, name: newDepartmentInput.trim() }]);
+      setFormData({ ...formData, department: newDepartmentInput.trim() });
+      setNewDepartmentInput("");
+      setShowNewDepartment(false);
+
+      toast({
+        title: "Success",
+        description: `Department "${newDepartmentInput.trim()}" added successfully`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add department",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const addNewDesignation = async () => {
+    if (!newDesignationInput.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a designation",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (designations.some(d => d.name === newDesignationInput.trim())) {
+      toast({
+        title: "Error",
+        description: "This designation already exists",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const result = await createDocument("custom_designations", {
+        name: newDesignationInput.trim(),
+        created_at: new Date().toISOString(),
+      });
+
+      const newDesignation = { id: result.data || `custom-${Date.now()}`, name: newDesignationInput.trim(), title: newDesignationInput.trim() };
+      setDesignations([...designations, newDesignation]);
+      setFormData({ ...formData, designation: newDesignationInput.trim() });
+      setNewDesignationInput("");
+      setShowNewDesignation(false);
+
+      toast({
+        title: "Success",
+        description: `Designation "${newDesignationInput.trim()}" added successfully`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add designation",
+        variant: "destructive",
+      });
     }
   };
 
@@ -474,6 +567,7 @@ const EditEmployeeDialog = ({ employee, open, onOpenChange, onSuccess }: EditEmp
           emergencyPersonAddress: formData.emergencyPersonAddress || null,
           profileImageUrl: profileImageUrl || null,
           documentUrls: allDocumentUrls,
+          canViewFinancials: formData.canViewFinancials || false,
         }),
       });
 
@@ -667,34 +761,98 @@ const EditEmployeeDialog = ({ employee, open, onOpenChange, onSuccess }: EditEmp
 
             <div className="space-y-2">
               <Label htmlFor="edit-department">Department</Label>
-              <Select value={formData.department} onValueChange={(value) => setFormData({ ...formData, department: value })}>
-                <SelectTrigger id="edit-department">
-                  <SelectValue placeholder="Select department" />
-                </SelectTrigger>
-                <SelectContent className="z-[100] max-h-[300px]">
-                  {departments.map((dept, index) => (
-                    <SelectItem key={dept.id || `dept-${index}-${dept.name}`} value={dept.name}>
-                      {dept.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex gap-2">
+                <Select value={formData.department} onValueChange={(value) => setFormData({ ...formData, department: value })}>
+                  <SelectTrigger className="flex-1" id="edit-department">
+                    <SelectValue placeholder="Select department" />
+                  </SelectTrigger>
+                  <SelectContent className="z-[100] max-h-[300px]">
+                    {departments.map((dept, index) => (
+                      <SelectItem key={dept.id || `dept-${index}-${dept.name}`} value={dept.name}>
+                        {dept.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setShowNewDepartment(!showNewDepartment)}
+                >
+                  <Plus size={16} />
+                </Button>
+              </div>
+              {showNewDepartment && (
+                <div className="flex gap-2 mt-2">
+                  <Input
+                    placeholder="New department name"
+                    value={newDepartmentInput}
+                    onChange={(e) => setNewDepartmentInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addNewDepartment();
+                      }
+                    }}
+                  />
+                  <Button type="button" onClick={addNewDepartment} size="sm">Add</Button>
+                  <Button type="button" onClick={() => {
+                    setShowNewDepartment(false);
+                    setNewDepartmentInput("");
+                  }} variant="ghost" size="sm">
+                    <X size={16} />
+                  </Button>
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="edit-designation">Designation</Label>
-              <Select value={formData.designation} onValueChange={(value) => setFormData({ ...formData, designation: value })}>
-                <SelectTrigger id="edit-designation">
-                  <SelectValue placeholder="Select designation" />
-                </SelectTrigger>
-                <SelectContent className="z-[100] max-h-[300px]">
-                  {designations.map((desig, index) => (
-                    <SelectItem key={desig.id || `desig-${index}-${desig.name}`} value={desig.name}>
-                      {desig.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex gap-2">
+                <Select value={formData.designation} onValueChange={(value) => setFormData({ ...formData, designation: value })}>
+                  <SelectTrigger className="flex-1" id="edit-designation">
+                    <SelectValue placeholder="Select designation" />
+                  </SelectTrigger>
+                  <SelectContent className="z-[100] max-h-[300px]">
+                    {designations.map((desig, index) => (
+                      <SelectItem key={desig.id || `desig-${index}-${desig.name}`} value={desig.name}>
+                        {desig.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setShowNewDesignation(!showNewDesignation)}
+                >
+                  <Plus size={16} />
+                </Button>
+              </div>
+              {showNewDesignation && (
+                <div className="flex gap-2 mt-2">
+                  <Input
+                    placeholder="New designation name"
+                    value={newDesignationInput}
+                    onChange={(e) => setNewDesignationInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addNewDesignation();
+                      }
+                    }}
+                  />
+                  <Button type="button" onClick={addNewDesignation} size="sm">Add</Button>
+                  <Button type="button" onClick={() => {
+                    setShowNewDesignation(false);
+                    setNewDesignationInput("");
+                  }} variant="ghost" size="sm">
+                    <X size={16} />
+                  </Button>
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -786,6 +944,22 @@ const EditEmployeeDialog = ({ employee, open, onOpenChange, onSuccess }: EditEmp
                 onChange={(e) => setFormData({ ...formData, bankRoutingNumber: e.target.value })}
                 placeholder="9-digit routing number"
               />
+            </div>
+
+            {/* Financial Information Visibility */}
+            <div className="space-y-2 p-4 bg-blue-50 rounded-md">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="edit-canViewFinancials"
+                  checked={formData.canViewFinancials}
+                  onCheckedChange={(checked) => 
+                    setFormData({ ...formData, canViewFinancials: checked as boolean })
+                  }
+                />
+                <Label htmlFor="edit-canViewFinancials" className="cursor-pointer font-medium">
+                  Allow employee to view their financial information (salary, payroll)
+                </Label>
+              </div>
             </div>
 
             <div className="space-y-2">

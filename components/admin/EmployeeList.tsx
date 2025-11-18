@@ -4,7 +4,7 @@ import { where, orderBy } from "firebase/firestore";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Trash2, Shield, ShieldOff, Edit, Key, Mail, Calendar, Briefcase, User } from "lucide-react";
+import { RefreshCw, Trash2, Edit, Key, Mail, Calendar, Briefcase, User } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import EditEmployeeDialog from "./EditEmployeeDialog";
@@ -163,58 +163,6 @@ const EmployeeList = ({ onUpdate }: EmployeeListProps) => {
     }
   };
 
-  const handleToggleAdminRole = async (employee: any) => {
-    setActionLoading(true);
-    try {
-      if (!employee.user_id) {
-        throw new Error('This employee does not have a user account yet. Please ensure they have login credentials first.');
-      }
-
-      const isAdmin = employee.roles?.includes('admin');
-      
-      // Call API to toggle admin role
-      const response = await fetch('/api/toggle-admin-role', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          authUid: employee.user_id,
-          isAdmin: !isAdmin,
-        }),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.message || 'Failed to update role');
-      }
-
-      if (isAdmin) {
-        toast({
-          title: "Admin access revoked",
-          description: `${employee.name} is no longer an admin.`,
-        });
-      } else {
-        toast({
-          title: "Admin access granted",
-          description: `${employee.name} is now an admin.`,
-        });
-      }
-
-      fetchEmployees();
-      onUpdate();
-    } catch (error: any) {
-      toast({
-        title: "Error updating admin role",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -250,7 +198,6 @@ const EmployeeList = ({ onUpdate }: EmployeeListProps) => {
           <p className="text-gray-500 mb-4">Get started by adding your first employee</p>
         </div>
       ) : (
-        /* Card Grid View */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
         {employees.map((employee) => {
           const isAdmin = employee.roles?.includes('admin');
@@ -336,26 +283,6 @@ const EmployeeList = ({ onUpdate }: EmployeeListProps) => {
                   >
                     <Key className="h-4 w-4 mr-1" />
                     Reset
-                  </Button>
-                  <Button
-                    variant={isAdmin ? "outline" : "default"}
-                    size="sm"
-                    onClick={() => handleToggleAdminRole(employee)}
-                    disabled={actionLoading || !employee.user_id}
-                    className="w-full"
-                    title={!employee.user_id ? "Employee needs login credentials first" : ""}
-                  >
-                    {isAdmin ? (
-                      <>
-                        <ShieldOff className="h-4 w-4 mr-1" />
-                        Revoke
-                      </>
-                    ) : (
-                      <>
-                        <Shield className="h-4 w-4 mr-1" />
-                        Admin
-                      </>
-                    )}
                   </Button>
                   <Button
                     variant="destructive"

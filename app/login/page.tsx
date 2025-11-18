@@ -166,7 +166,7 @@ export default function Login() {
               <Input
                 id="emailOrEid"
                 type="text"
-                placeholder="your.email@bimaided.com or EMP001"
+                placeholder="your.email@bimaided.com"
                 value={emailOrEid}
                 onChange={(e) => setEmailOrEid(e.target.value)}
                 required

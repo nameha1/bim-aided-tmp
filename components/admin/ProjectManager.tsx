@@ -6,12 +6,20 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { getDocuments } from "@/lib/firebase/firestore";
+import { getDocuments, createDocument } from "@/lib/firebase/firestore";
 import { orderBy } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, Upload, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { compressImage, uploadImage } from "@/lib/imageUtils";
+
+const DEFAULT_CATEGORIES = [
+  "Commercial",
+  "Residential",
+  "Historical",
+  "Embassy",
+  "Infrastructure",
+];
 
 const ProjectManager = () => {
   const [projects, setProjects] = useState<any[]>([]);
@@ -20,13 +28,9 @@ const ProjectManager = () => {
   const [editingProject, setEditingProject] = useState<any>(null);
   const { toast } = useToast();
 
-  const categories = [
-    "Commercial",
-    "Residential",
-    "Historical",
-    "Embassy",
-    "Infrastructure",
-  ];
+  const [categories, setCategories] = useState<string[]>(DEFAULT_CATEGORIES);
+  const [showNewCategory, setShowNewCategory] = useState(false);
+  const [newCategoryInput, setNewCategoryInput] = useState("");
 
   const [formData, setFormData] = useState({
     title: "",
@@ -47,7 +51,64 @@ const ProjectManager = () => {
 
   useEffect(() => {
     fetchProjects();
+    loadCustomCategories();
   }, []);
+
+  const loadCustomCategories = async () => {
+    try {
+      const { data: customCats } = await getDocuments("custom_project_categories");
+
+      if (customCats && customCats.length > 0) {
+        const catNames = customCats.map((c: any) => c.name).filter((name: string) => !DEFAULT_CATEGORIES.includes(name));
+        setCategories([...DEFAULT_CATEGORIES, ...catNames]);
+      }
+    } catch (error) {
+      console.error("Error loading custom categories:", error);
+    }
+  };
+
+  const addNewCategory = async () => {
+    if (!newCategoryInput.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a category name",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (categories.includes(newCategoryInput.trim())) {
+      toast({
+        title: "Error",
+        description: "This category already exists",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await createDocument("custom_project_categories", {
+        name: newCategoryInput.trim(),
+        created_at: new Date().toISOString(),
+      });
+
+      setCategories([...categories, newCategoryInput.trim()]);
+      setFormData({ ...formData, category: newCategoryInput.trim() });
+      setNewCategoryInput("");
+      setShowNewCategory(false);
+
+      toast({
+        title: "Success",
+        description: `Category "${newCategoryInput.trim()}" added successfully`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add category",
+        variant: "destructive",
+      });
+    }
+  };
 
   const fetchProjects = async () => {
     try {
@@ -345,18 +406,50 @@ const ProjectManager = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="category">Category*</Label>
-                  <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })} required>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map((cat) => (
-                        <SelectItem key={cat} value={cat}>
-                          {cat}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex gap-2">
+                    <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })} required>
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categories.map((cat) => (
+                          <SelectItem key={cat} value={cat}>
+                            {cat}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setShowNewCategory(!showNewCategory)}
+                    >
+                      <Plus size={16} />
+                    </Button>
+                  </div>
+                  {showNewCategory && (
+                    <div className="flex gap-2 mt-2">
+                      <Input
+                        placeholder="New category name"
+                        value={newCategoryInput}
+                        onChange={(e) => setNewCategoryInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            addNewCategory();
+                          }
+                        }}
+                      />
+                      <Button type="button" onClick={addNewCategory} size="sm">Add</Button>
+                      <Button type="button" onClick={() => {
+                        setShowNewCategory(false);
+                        setNewCategoryInput("");
+                      }} variant="ghost" size="sm">
+                        <X size={16} />
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
 
