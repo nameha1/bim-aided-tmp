@@ -106,7 +106,7 @@ const ParallaxHero = () => {
           }}
         >
           {/* Main Title */}
-          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold mb-2 md:mb-3 px-4 sm:px-12 md:px-16 font-[var(--font-roboto)]" style={{ letterSpacing: '0', lineHeight: '1.1' }}>
+          <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold mb-2 md:mb-3 px-4 sm:px-12 md:px-16 font-[var(--font-roboto)]" style={{ letterSpacing: '0', lineHeight: '1.1' }}>
             <span className="block mb-1 md:mb-2">
               <span className="typing-wrapper">
                 <span className="typing-text drop-shadow-[0_4px_20px_rgba(0,0,0,0.8)]">
@@ -114,7 +114,7 @@ const ParallaxHero = () => {
                 </span>
               </span>
             </span>
-            <span className="block text-3xl sm:text-4xl md:text-5xl lg:text-6xl bg-gradient-to-r from-white via-blue-100 to-white/90 bg-clip-text text-transparent animate-fade-in [animation-delay:2.5s] [animation-fill-mode:forwards] drop-shadow-[0_4px_20px_rgba(0,0,0,0.8)]" style={{ lineHeight: '1.1' }}>
+            <span className="block text-xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl bg-gradient-to-r from-white via-blue-100 to-white/90 bg-clip-text text-transparent animate-fade-in [animation-delay:2.5s] [animation-fill-mode:forwards] drop-shadow-[0_4px_20px_rgba(0,0,0,0.8)]" style={{ lineHeight: '1.1' }}>
               with BIM Excellence
             </span>
           </h1>
