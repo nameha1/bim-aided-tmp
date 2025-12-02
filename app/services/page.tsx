@@ -97,7 +97,7 @@ export default function Services() {
       {/* Hero Section */}
       <section className="relative min-h-[60vh] flex items-center justify-center overflow-hidden">
         {/* Animated Background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary/95 to-primary/80">
+        <div className="absolute inset-0 bg-gradient-to-br from-sky-900/85 via-sky-700/75 to-blue-800/80">
           {/* Animated Grid Pattern */}
           <div className="absolute inset-0 opacity-10">
             <div className="absolute inset-0" style={{
@@ -217,7 +217,7 @@ export default function Services() {
                 </CardHeader>
                 <CardContent>
                   <p className="text-muted-foreground">
-                    50+ certified BIM professionals with extensive industry experience
+                    20+ certified BIM professionals with extensive industry experience
                   </p>
                 </CardContent>
               </Card>
@@ -245,7 +245,7 @@ export default function Services() {
                 </CardHeader>
                 <CardContent>
                   <p className="text-muted-foreground">
-                    500+ successfully delivered projects across multiple continents
+                    200+ successfully delivered projects across multiple continents
                   </p>
                 </CardContent>
               </Card>

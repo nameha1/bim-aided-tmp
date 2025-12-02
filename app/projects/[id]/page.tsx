@@ -192,6 +192,16 @@ export default function ProjectDetail({ params }: { params: { id: string } }) {
                 </div>
               )}
               
+              {project.lod && (
+                <div className="flex items-start gap-3">
+                  <Building2 className="text-primary mt-1 flex-shrink-0" size={20} />
+                  <div>
+                    <p className="text-sm text-muted-foreground">LOD (Level of Development)</p>
+                    <p className="font-medium">{project.lod}</p>
+                  </div>
+                </div>
+              )}
+              
               <div className="pt-4 border-t border-border">
                 <p className="text-sm text-muted-foreground mb-2">Category</p>
                 <Badge variant="outline">{project.category}</Badge>
