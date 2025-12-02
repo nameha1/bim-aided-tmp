@@ -40,6 +40,7 @@ export async function POST(req: NextRequest) {
       emergencyPersonAddress,
       profileImageUrl,
       documentUrls,
+      canViewFinancials,
     } = body;
 
     console.log('Creating employee with data:', {
@@ -200,8 +201,11 @@ export async function POST(req: NextRequest) {
         emergency_person_name: emergencyPersonName || null,
         emergency_person_contact: emergencyPersonContact || null,
         emergency_person_address: emergencyPersonAddress || null,
-        profile_image_url: profileImageUrl || null,
+        profileImageUrl: profileImageUrl || null, // Use camelCase to match update API and frontend
+        profile_image_url: profileImageUrl || null, // Keep snake_case for backward compatibility
         document_urls: documentUrls || [],
+        can_view_financials: canViewFinancials || false, // Add financial visibility permission
+        canViewFinancials: canViewFinancials || false, // CamelCase for consistency
         auth_uid: authUser.uid,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),

@@ -112,42 +112,54 @@ const EmployeeProfile = ({ employee }: EmployeeProfileProps) => {
             <Label className="text-sm text-muted-foreground">Employment Status</Label>
             <p className="text-base font-medium">{employee.status || employee.employment_status || "N/A"}</p>
           </div>
-
-          <div>
-            <Label className="text-sm text-muted-foreground">Gross Salary</Label>
-            <p className="text-base font-medium">
-              {employee.grossSalary || employee.gross_salary ? `৳${Number(employee.grossSalary || employee.gross_salary).toLocaleString()}` : "N/A"}
-            </p>
-          </div>
         </div>
       </div>
 
-      {/* Bank Information */}
-      <div>
-        <h3 className="text-lg font-semibold mb-4">Bank Information</h3>
-        <Separator className="mb-4" />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* Financial Information - Only show if employee has permission */}
+      {(employee.can_view_financials || employee.canViewFinancials) && (
+        <>
+          {/* Employment Salary */}
           <div>
-            <Label className="text-sm text-muted-foreground">Bank Name</Label>
-            <p className="text-base font-medium">{employee.bankName || employee.bank_name || "N/A"}</p>
+            <h3 className="text-lg font-semibold mb-4">Financial Information</h3>
+            <Separator className="mb-4" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label className="text-sm text-muted-foreground">Gross Salary</Label>
+                <p className="text-base font-medium">
+                  {employee.grossSalary || employee.gross_salary ? `৳${Number(employee.grossSalary || employee.gross_salary).toLocaleString()}` : "N/A"}
+                </p>
+              </div>
+            </div>
           </div>
 
+          {/* Bank Information */}
           <div>
-            <Label className="text-sm text-muted-foreground">Account Number</Label>
-            <p className="text-base font-medium">{employee.bankAccountNumber || employee.bank_account_number || "N/A"}</p>
-          </div>
+            <h3 className="text-lg font-semibold mb-4">Bank Information</h3>
+            <Separator className="mb-4" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label className="text-sm text-muted-foreground">Bank Name</Label>
+                <p className="text-base font-medium">{employee.bankName || employee.bank_name || "N/A"}</p>
+              </div>
 
-          <div>
-            <Label className="text-sm text-muted-foreground">Branch</Label>
-            <p className="text-base font-medium">{employee.bankBranch || employee.bank_branch || "N/A"}</p>
-          </div>
+              <div>
+                <Label className="text-sm text-muted-foreground">Account Number</Label>
+                <p className="text-base font-medium">{employee.bankAccountNumber || employee.bank_account_number || "N/A"}</p>
+              </div>
 
-          <div>
-            <Label className="text-sm text-muted-foreground">Routing Number</Label>
-            <p className="text-base font-medium">{employee.bankRoutingNumber || employee.bank_routing_number || "N/A"}</p>
+              <div>
+                <Label className="text-sm text-muted-foreground">Branch</Label>
+                <p className="text-base font-medium">{employee.bankBranch || employee.bank_branch || "N/A"}</p>
+              </div>
+
+              <div>
+                <Label className="text-sm text-muted-foreground">Routing Number</Label>
+                <p className="text-base font-medium">{employee.bankRoutingNumber || employee.bank_routing_number || "N/A"}</p>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
+        </>
+      )}
 
       {/* Emergency Contact */}
       <div>

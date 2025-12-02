@@ -20,7 +20,7 @@ if (!admin.apps.length) {
 const db = admin.firestore();
 const auth = admin.auth();
 
-const ADMIN_EMAIL = 'info@bimaided.com';
+const ADMIN_EMAIL = 'admin@bimaided.com';
 const ADMIN_PASSWORD = 'C?18dr!4';
 const ADMIN_NAME = 'Admin';
 

@@ -483,16 +483,23 @@ const EditEmployeeDialog = ({ employee, open, onOpenChange, onSuccess }: EditEmp
   const uploadFile = async (file: File, path: string): Promise<string> => {
     const formDataUpload = new FormData();
     formDataUpload.append('file', file);
-    formDataUpload.append('path', path);
+    formDataUpload.append('folder', path);
 
     const response = await fetch('/api/upload-image', {
       method: 'POST',
       body: formDataUpload,
     });
 
-    if (!response.ok) throw new Error('File upload failed');
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || errorData.error || 'File upload failed');
+    }
     
     const result = await response.json();
+    if (!result.success || !result.url) {
+      throw new Error(result.message || result.error || 'File upload failed - no URL returned');
+    }
+    
     return result.url;
   };
 
@@ -531,8 +538,15 @@ const EditEmployeeDialog = ({ employee, open, onOpenChange, onSuccess }: EditEmp
       // Upload new documents
       const allDocumentUrls = [...existingDocuments];
       for (let i = 0; i < newDocuments.length; i++) {
-        const url = await uploadFile(newDocuments[i], `employees/documents/${employee.id}-${Date.now()}-${i}`);
-        allDocumentUrls.push(url);
+        try {
+          console.log(`Uploading document ${i + 1}...`, newDocuments[i].name);
+          const url = await uploadFile(newDocuments[i], `employees/documents`);
+          allDocumentUrls.push(url);
+          console.log(`Document ${i + 1} uploaded:`, url);
+        } catch (uploadError: any) {
+          console.error(`Document ${i + 1} upload error:`, uploadError);
+          throw new Error(`Failed to upload document ${i + 1}: ${uploadError.message}`);
+        }
       }
 
       const response = await fetch(`/api/update-employee/${employee.id}`, {

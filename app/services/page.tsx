@@ -157,58 +157,40 @@ export default function Services() {
             </p>
           </div>
 
-          <div className="flex flex-row gap-8 w-full overflow-x-auto min-w-[1600px]">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-8 w-full">
             {services.map((service, index) => (
-              <Card key={index} className="border-border overflow-hidden group hover:shadow-2xl transition-all duration-300 w-[300px] min-w-[300px] max-w-[300px] h-[420px]">
-                {/* Image Section */}
-                <div className="relative h-64 overflow-hidden">
-                  <img 
-                    src={service.image.replace(/ /g, '%20')} 
-                    alt={service.title}
-                    className="w-full h-full object-cover"
-                    onError={e => { e.currentTarget.style.display = 'none'; }}
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
-                  <div className="absolute bottom-6 left-6">
-                    <div className="w-16 h-16 rounded-xl bg-primary shadow-lg flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                      <service.icon className="text-white" size={32} />
+              <Link key={index} href={service.link} className="block">
+                <Card className="border-border overflow-hidden group hover:shadow-2xl transition-all duration-300 cursor-pointer">
+                  {/* Image Section */}
+                  <div className="relative h-64 overflow-hidden">
+                    <img 
+                      src={service.image.replace(/ /g, '%20')} 
+                      alt={service.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      onError={e => { e.currentTarget.style.display = 'none'; }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
+                    <div className="absolute bottom-6 left-6">
+                      <div className="w-16 h-16 rounded-xl bg-primary shadow-lg flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                        <service.icon className="text-white" size={32} />
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <CardHeader>
-                  <CardTitle className="text-2xl group-hover:text-primary transition-colors">
-                    {service.title}
-                  </CardTitle>
-                  <CardDescription className="text-base">
-                    {service.description}
-                  </CardDescription>
-                </CardHeader>
-                
-                <CardContent>
-                  <div className="mb-6">
-                    <h4 className="font-semibold mb-3 flex items-center gap-2">
-                      <div className="w-1 h-4 bg-primary rounded" />
-                      Key Features
-                    </h4>
-                    <ul className="space-y-2">
-                      {service.features.map((feature, idx) => (
-                        <li key={idx} className="flex items-start gap-2 text-sm">
-                          <div className="w-1.5 h-1.5 rounded-full bg-primary mt-2 flex-shrink-0" />
-                          <span className="text-muted-foreground">{feature}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
+                  <CardHeader>
+                    <CardTitle className="text-2xl group-hover:text-primary transition-colors">
+                      {service.title}
+                    </CardTitle>
+                  </CardHeader>
                   
-                  <Link href={service.link}>
+                  <CardContent>
                     <Button className="w-full group-hover:bg-primary group-hover:text-white transition-all">
                       Learn More
                       <ArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" size={16} />
                     </Button>
-                  </Link>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              </Link>
             ))}
           </div>
         </div>

@@ -51,6 +51,7 @@ export async function PUT(
       emergencyPersonAddress,
       profileImageUrl,
       documentUrls,
+      canViewFinancials,
     } = body;
 
     // Update employee document in Firestore
@@ -82,7 +83,10 @@ export async function PUT(
       emergency_person_contact: emergencyPersonContact || null,
       emergency_person_address: emergencyPersonAddress || null,
       profileImageUrl: profileImageUrl || null,
+      profile_image_url: profileImageUrl || null, // Keep both formats for compatibility
       document_urls: documentUrls || [],
+      can_view_financials: canViewFinancials !== undefined ? canViewFinancials : null,
+      canViewFinancials: canViewFinancials !== undefined ? canViewFinancials : null,
       updated_at: new Date().toISOString(),
     };
 
